@@ -41,12 +41,12 @@ int main() {
     A1();
     expected["b"] = memory.update<std::string>({{"b","0"}})["b"];
     test_ok &= expected["b"] == "5";
-    TEST(test_ok, "simple Action");
+    TEST(test_ok, "memory Action");
     test_ok &= !C1();
     memory.set({{"a","c"}});
     memory.update<std::string>(expected);
     test_ok &= C1();
-    TEST(test_ok, "simple Condition");
+    TEST(test_ok, "memory Condition");
 
     auto C2 = memory.build_condtion("a && c");
     test_ok &= C2();
@@ -54,5 +54,17 @@ int main() {
     test_ok &= !C2();
     TEST(test_ok, "strange condition");
 
+    memory.add_state("__STATE__A", NodeState::UNDEFINED);
+    memory.set_state("__STATE__A", NodeState::RUNNING);
+    test_ok &= memory.get_state("__STATE__A") == NodeState::RUNNING;
+    TEST(test_ok, "get_state & set_state");
+
+    auto uv = memory.used_vars("A && B || C + D.a");
+    test_ok &= uv.size() == 4;
+    test_ok &= uv.count("A");
+    test_ok &= uv.count("B");
+    test_ok &= uv.count("C");
+    test_ok &= uv.count("D");
+    TEST(test_ok, ".used_vars()");
     return 0;
 }

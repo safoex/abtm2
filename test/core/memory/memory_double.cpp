@@ -27,11 +27,11 @@ int main() {
 
     test_ok &= !memory.test_expression("x & y");
     test_ok &= memory.test_expression("a | b & c");
-    test_ok &= memory.test_expression("a= b + c");
-    test_ok &= !memory.test_expression("x= b * c & d");
+    test_ok &= memory.test_expression("a:= b + c");
+    test_ok &= !memory.test_expression("x:= b * c & d");
     TEST(test_ok, ".test_expression");
 
-    auto A1 = memory.build_action("b= c+ a");
+    auto A1 = memory.build_action("b:= c+ a");
     auto C1 = memory.build_condtion("c & a");
 
     auto expected = memory.update<double>({{"a",0.0},{"c",0.0}});
@@ -42,6 +42,19 @@ int main() {
     memory.set({{"a",0.0}});
     memory.update<double>(expected);
     test_ok &= C1() == ( bool(expected["a"]) && bool(expected["c"]));
-    TEST(test_ok, "simple Action and Condition");
+    TEST(test_ok, "memory Action and Condition");
+
+    memory.add_state("__STATE__A", NodeState::UNDEFINED);
+    memory.set_state("__STATE__A", NodeState::RUNNING);
+    test_ok &= memory.get_state("__STATE__A") == NodeState::RUNNING;
+    TEST(test_ok, "get_state & set_state");
+    
+    auto uv = memory.used_vars("A & B | C = D");
+    test_ok &= uv.size() == 4;
+    test_ok &= uv.count("A");
+    test_ok &= uv.count("B");
+    test_ok &= uv.count("C");
+    test_ok &= uv.count("D");
+    TEST(test_ok, ".used_vars()");
     return 0;
 }

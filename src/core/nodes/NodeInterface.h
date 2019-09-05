@@ -17,6 +17,7 @@ namespace abtm {
     public:
         typedef std::function<void(NodeInterface*)> Handler;
         bool visited;
+        std::any info;
         std::list<NodeInterface*> children;
 
 

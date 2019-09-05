@@ -22,6 +22,7 @@ namespace abtm {
         virtual BFunction build_action(std::string const& expression) = 0;
         virtual BFunction build_condtion(std::string const& expression) = 0;
         virtual bool test_expression(std::string const& expression) = 0;
+        virtual keys used_vars(std::string const& expression) = 0;
         virtual ~MemoryInterface() = default;
 
         virtual sample update(sample const& s) {

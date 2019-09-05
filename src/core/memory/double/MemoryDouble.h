@@ -125,6 +125,11 @@ namespace abtm {
             }
             return all_keys_present;
         };
+
+        keys used_vars(std::string const& expression) override {
+            std::lock_guard lockGuard(mutex);
+            return calc::find_vars(expression);
+        }
     };
 }
 

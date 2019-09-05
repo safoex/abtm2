@@ -7,6 +7,7 @@
 
 #include "core/common.h"
 #include "core/memory/MemoryInterface.h"
+#include "core/memory/js/JSSymbolsFinder.h"
 #include <duktape.h>
 #include "rapidjson/rapidjson.h"
 #include "rapidjson/document.h"
@@ -178,6 +179,11 @@ namespace abtm {
             eval("restore_changes();", "", false);
             return test;
         };
+        
+        keys used_vars(std::string const& expression) override {
+            std::lock_guard lockGuard(mutex);
+            return abtm_js::get_used_vars_from_expr(expression);
+        }
     };
 }
 

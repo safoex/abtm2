@@ -17,7 +17,7 @@
 #include <mutex>
 
 #define SCREAM(x) for(int i = 0; i < 20; i++) std::cout << x; std::cout << std::endl;
-
+#define EXCEPTION_WORD "__EXCEPTION__"
 namespace abtm {
     template<typename T> using dictOf = std::unordered_map<std::string, T>;
     typedef std::unordered_set<std::string> keys;
@@ -66,6 +66,27 @@ namespace abtm {
             case abtm::FAILURE: return "FAILURE";
             case abtm::RUNNING: return "RUNNING";
             default: return "UNDEFINED";
+        }
+    }
+
+    NodeState from_string(std::string const& ns) {
+        if(ns.empty())
+            return UNDEFINED;
+        switch (ns[0]) {
+            case 'S': return SUCCESS;
+            case 'F': return FAILURE;
+            case 'R': return RUNNING;
+            default: return UNDEFINED;
+        }
+    }
+
+    sample make_exception(std::string const& what) {
+        return {{EXCEPTION_WORD, std::string(what)}};
+    }
+
+    std::string get_exception(sample const& s) {
+        if(s.count(EXCEPTION_WORD)) {
+            return std::any_cast<std::string>(s.at(EXCEPTION_WORD));
         }
     }
 
