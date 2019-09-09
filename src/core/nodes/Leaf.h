@@ -15,7 +15,8 @@ namespace abtm {
         BFunction leaf_function;
     public:
         Leaf(std::string const& name, MemoryInterface& memory, BFunction const& leaf_function,
-                NodeState trueState = SUCCESS, NodeState falseState = SUCCESS) : NodeInterface(name, memory), leaf_function(leaf_function),
+                NodeState trueState = SUCCESS, NodeState falseState = SUCCESS, bool deactivation = true) :
+                NodeInterface(name, memory, deactivation), leaf_function(leaf_function),
                 trueState(trueState), falseState(falseState) {}
 
         NodeState tick() override {

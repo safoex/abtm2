@@ -6,7 +6,7 @@
 #include "core/memory/double/MemoryDouble.h"
 #include "core/common.h"
 
-#define TEST(ok, name) std::cout << "TEST " << name << (ok ? " PASSED" : " FAILED") << std::endl
+#include "../test/testing.h"
 
 int main() {
 
@@ -25,15 +25,15 @@ int main() {
     root.insert(&C1);
     root.insert(&A1);
     test_ok &= root.tick() == SUCCESS;
-    TEST(test_ok, "tick()");
+    TEST(test_ok, "1.0: tick()");
     auto changes = memory.changes();
     memory.flush();
-    test_ok &= changes.size() == 1;
-    TEST(test_ok, "size of changes");
-    test_ok &= changes.count("x");
-    TEST(test_ok, "changes contain correct variable");
-    test_ok &= from_sample<double>(changes)["x"] == 2;
-    TEST(test_ok, "Sequence, Action, Condition, tick, changes");
+    test_ok = !changes.count("a") && !changes.count("b");
+    TEST(test_ok, "2.1: changes don't contain incorrect variables");
+    test_ok = changes.count("x");
+    TEST(test_ok, "2.2: changes contain correct variable");
+    test_ok = from_sample<double>(changes)["x"] == 2;
+    TEST(test_ok, "2.3: Sequence, Action, Condition, tick, changes");
 
 
     Parallel p(SUCCESS, "par", memory);
@@ -48,16 +48,16 @@ int main() {
     memory.set(make_sample<double>({{"a", -3}}));
 
     root.bfs_with_handler([](NodeInterface* n) {n->visited = false;});
-    test_ok &= root.tick() == RUNNING;
+    test_ok = root.tick() == RUNNING;
 
     root.bfs_with_handler([](NodeInterface* n) {n->visited = false;});
     test_ok &= root.tick() == SUCCESS;
 
     changes = memory.changes();
     memory.flush();
-    test_ok &= changes.size() == 2;
+    test_ok &= !changes.count("b");
     test_ok &= changes.count("a") && from_sample<double >(changes)["a"] == -3;
     test_ok &= changes.count("x") && from_sample<double >(changes)["x"] == 3;
-    TEST(test_ok, "run-time erase, replace, insert, Parallel");
+    TEST(test_ok, "3.0: run-time erase, replace, insert, Parallel");
     return 0;
 }

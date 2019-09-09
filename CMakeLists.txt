@@ -16,6 +16,15 @@ add_executable(test_memory_double test/core/memory/memory_double.cpp)
 
 add_executable(test_memory_duktape test/core/memory/memory_duktape.cpp ${MEMORY_DUKTAPE_LIBS})
 
-add_executable(test_node test/core/nodes/test.cpp ${MEMORY_DUKTAPE_LIBS})
+add_executable(test_node test/core/nodes/test_nodes.cpp ${MEMORY_DUKTAPE_LIBS})
 
-add_executable(test_tree test/core/exec/test_tree.cpp ${MEMORY_DUKTAPE_LIBS})
+add_executable(test_tree_classic test/core/exec/test_tree_classic.cpp)
+
+add_executable(test_tree_async test/core/exec/test_tree_async.cpp)
+
+add_executable(test_io test/io/iocenter.cpp)
+target_link_libraries(test_io libyaml-cpp.so)
+
+add_executable(test_parse test/io/parse.cpp)
+target_link_libraries(test_io libyaml-cpp.so)
+

@@ -12,9 +12,8 @@ namespace abtm {
     protected:
         NodeState return_state;
     public:
-        ControlInterface(NodeState return_state, std::string const& name, MemoryInterface& memory) : NodeInterface(name, memory),
-        return_state(return_state) {
-        }
+        ControlInterface(NodeState return_state, std::string const& name, MemoryInterface& memory, bool deactivation = true) :
+        NodeInterface(name, memory, deactivation), return_state(return_state) {}
 
         NodeInterface* find(std::string const& name) {
             for(auto const& child: children) {
@@ -52,7 +51,7 @@ namespace abtm {
             NodeState result = evaluate();
 
             memory.set_state(state_var(), result);
-            if(result != return_state) {
+            if(result != return_state && deactivation) {
                 deactivate();
             }
 

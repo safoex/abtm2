@@ -15,7 +15,8 @@ namespace abtm {
         // Selector := Sequential(FAILURE, ...)
         // Skipper  := Sequential(RUNNING, ...)
 
-        Sequential(NodeState return_state, std::string const& name, MemoryInterface& memory) : ControlInterface(return_state, name, memory) {}
+        Sequential(NodeState return_state, std::string const& name, MemoryInterface& memory, bool deactivation = true) :
+        ControlInterface(return_state, name, memory, deactivation) {}
 
         NodeState evaluate() override {
             NodeState result = return_state;

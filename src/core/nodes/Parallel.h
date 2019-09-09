@@ -15,8 +15,8 @@ namespace abtm {
         // (Classical)  Parallel := Parallel(SUCCESS, ...)
         // At Least One Parallel := Parallel(FAILURE, ...)
 
-        Parallel(NodeState break_state, std::string const& name, MemoryInterface& memory) : ControlInterface(RUNNING, name, memory),
-                break_state(break_state) {}
+        Parallel(NodeState break_state, std::string const& name, MemoryInterface& memory, bool deactivation = true) :
+        ControlInterface(RUNNING, name, memory, deactivation), break_state(break_state) {}
 
         NodeState evaluate() override {
 

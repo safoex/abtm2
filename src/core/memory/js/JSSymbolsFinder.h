@@ -144,7 +144,7 @@ void visit(esprima::Node *node) {\
             program->accept(&fv);
         }
         catch (const esprima::ParseError &error) {
-            std::cout << "parse error: " << error.description << std::endl;
+            std::cout << "load error: " << error.description << std::endl;
             throw std::runtime_error("Error while finding used vars in " + expr);
         }
         return result;

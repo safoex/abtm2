@@ -12,13 +12,16 @@
 #include <atomic>
 #include "core/nodes/Leaf.h"
 
+#define DROP_TICKS_ON_PAUSE
+#undef DROP_TICKS_ON_PAUSE
+
 namespace abtm {
 
     struct ABTM_NodeInfo{
         std::vector<int> order;
         NodeInterface* parent;
-        ABTM_NodeInfo(std::vector<int>&& order = {0}, NodeInterface* parent = nullptr): order(order), parent(parent){};
-        ABTM_NodeInfo(NodeInterface* me, NodeInterface* parent = nullptr) : parent(parent) {
+        explicit ABTM_NodeInfo(std::vector<int>&& order = {0}, NodeInterface* parent = nullptr): order(order), parent(parent){};
+        explicit ABTM_NodeInfo(NodeInterface* me, NodeInterface* parent = nullptr) : parent(parent) {
             if(parent == nullptr) {
                 order = {0};
             }
@@ -28,14 +31,18 @@ namespace abtm {
         }
         void reset_order(NodeInterface* me) {
             int i = 0;
-            order = std::any_cast<ABTM_NodeInfo*>(parent->info)->order;
-            for(auto c: parent->children) {
-                if(c == me) {
-                    order.push_back(i);
-                    break;
+            if(parent != nullptr) {
+                order = std::any_cast<ABTM_NodeInfo *>(parent->info)->order;
+                for(auto c: parent->children) {
+                    if(c == me) {
+                        order.push_back(i);
+                        break;
+                    }
+                    i++;
                 }
-                i++;
             }
+            else
+                order = std::vector<int>{0};
         }
     };
 
@@ -61,9 +68,6 @@ namespace abtm {
             Async = AsyncBottomUp,
             Classic = SyncTopDown
         };
-        enum ExtraCommands {
-            LINK
-        };
     protected:
         std::queue<sample> stash;
         std::priority_queue<NodeInterface*, std::vector<NodeInterface*>, ABTM_NodeCompare> tick_queue;
@@ -71,65 +75,197 @@ namespace abtm {
         dictOf <std::unordered_set<NodeInterface*>> links;
         ExecutionType exec_type;
         ControlInterface* root;
+        sample output_stash;
         std::mutex mutex;
-        Execution state;
     public:
-        ABTM(ExecutionType executionType, MemoryInterface* memory = nullptr) : ExecutorInterface(memory),
-        exec_type(executionType), root(nullptr), state(STOP) {}
+        explicit ABTM(ExecutionType executionType, MemoryInterface* memory = nullptr) : ExecutorInterface(memory),
+        exec_type(executionType), root(nullptr) {}
         sample execute(sample const& s) override {
             std::lock_guard lockGuard(mutex);
 
             sample result;
+            auto [type, com, _data, ticket] = unpack(s);
+            if(type == Execute) {
+                if(state == NOT_STARTED) {
+                    if(ExecutorInterface::Execution(com) == START) {
+                        state = ExecutorInterface::Execution(com);
+                        if(exec_type == Async) {
+                            return exec(TICK_SAMPLE);
+                        }
+                    }
+                }
+                else state = ExecutorInterface::Execution(com);
 
-            if(state == START || state == PAUSE) {
-                stash.push(s);
             }
-            if(state == START) {
-                while(!stash.empty()) {
-                    auto tmp = exec(stash.front());
-                    for(auto const& [k,v]: tmp)
-                        result.insert({k,v});
-                    stash.pop();
+            else if(type == Modify) {
+                auto data = std::any_cast<dictOf <std::string>>(_data);
+                return modify(Modification(com), data, ticket);
+            }
+            else {
+                if (state == START || state == PAUSE) {
+#ifdef DROP_TICKS_ON_PAUSE
+                    if(!(state == PAUSE && s.count(TICK_WORD)))
+#endif
+                    stash.push(s);
+
+                }
+                if (state == START) {
+                    while (!stash.empty()) {
+                        auto tmp = exec(stash.front());
+                        for (auto const&[k, v]: tmp)
+                            result[k] = v;
+                        stash.pop();
+                    }
+                }
+                if (state == STOP) {
+
                 }
             }
-
             return result;
         };
     protected:
 
         sample exec(sample const& s) {
-            auto [_com, _data] = unpack(s);
-            auto [type, com] = _com;
-            if(type != -1) {
-                if(type == CommandType::Execute) {
-                    state = ExecutorInterface::Execution(com);
+            switch (exec_type) {
+                case AsyncBottomUp: return callback_async_bottomup(s);
+                case AsyncTopDown:  return callback_async_topdown(s);
+                case SyncTopDown:   return callback_sync_topdown(s);
+            }
+        }
+
+        bool propogate_once_bottomup() {
+
+            // 0: get changed variables
+            auto s = memory->changes();
+            for(auto const& [k,v]: s)
+                output_stash[k] = v;
+            memory->flush();
+
+            std::unordered_set <NodeInterface*> possibly_changed_conditions{};
+
+            // 1: collect possibly changed conditions from links to changed variables
+            for(auto const& [k,v]: s) {
+                possibly_changed_conditions.insert(links[k].begin(), links[k].end());
+            }
+
+            // 2: check if state has really changed
+            // 3: clear .visited field from these conditions
+            for(NodeInterface* node: possibly_changed_conditions) {
+                if(node->state() != node->evaluate()) {
+                    tick_queue.push(node);
+                    while (node != nullptr) {
+                        node->visited = false;
+                        node = std::any_cast<ABTM_NodeInfo*>(node->info)->parent;
+                    }
                 }
-                else if(type == CommandType::Modify) {
-                    auto data = std::any_cast<dictOf <std::string>>(_data);
-                    std::string type = data["type"],
+            }
+
+            // 4:
+            if(!tick_queue.empty()) {
+                auto node = tick_queue.top();
+                tick_queue.pop();
+                if(node && node->state() != node->tick()) {
+                    tick_queue.push(std::any_cast<ABTM_NodeInfo*>(node->info)->parent);
+                }
+            }
+
+            // 5: return true if we have or potentially have nodes to tick
+            return !tick_queue.empty() || !memory->changes().empty();
+        }
+
+        sample callback_async_bottomup(sample const& s) {
+            // 0: set input changes       OR      initiate from root
+            if(s.count(TICK_WORD)) {
+                root->bfs_with_handler([](NodeInterface* n) {n->visited = false;});
+                root->tick();
+            }
+            else memory->set(s);
+
+            // 1: clear old output
+            output_stash.clear();
+
+            // 2: clear .visited for all nodes
+            root->bfs_with_handler([](NodeInterface* n) {n->visited = false;});
+
+            // 3: tick nodes while there is something to tick
+            while(propogate_once_bottomup());
+
+            // 4: return output
+            return output_stash;
+        }
+
+        sample callback_async_topdown(sample const& s) {
+            memory->set(s);
+            root->bfs_with_handler([](NodeInterface* n) {n->visited = false;});
+            root->tick();
+            output_stash = memory->changes();
+            memory->flush();
+            return output_stash;
+        }
+
+        sample callback_sync_topdown(sample const& s) {
+
+            if(s.count(TICK_WORD)){
+                root->bfs_with_handler([](NodeInterface* n) {n->visited = false;});
+                root->tick();
+                output_stash = memory->changes();
+                memory->flush();
+                return output_stash;
+            }
+            else {
+                memory->set(s);
+                return {};
+            }
+        }
+
+
+
+        sample modify(Modification com, dictOf<std::string> data, std::string const& ticket = "") {
+
+            std::string type = data["type"],
                     name = data["name"],
                     expr = data["expr"],
                     true_state = data["true_state"], false_state = data["false_state"],
                     parent = data["parent"],
                     before = data["before"],
                     instead = data["instead"];
-                    if(name.empty())
-                        return make_exception("no name in Modify call");
-                    if(com == INSERT) {
-                        if(parent.empty()) {
-                            return make_exception("insert " + name + ": no parent");
-                        }
-                        
-                        insert(new_node, parent, before);
-
-
-                    }
+            if(name.empty())
+                return make_exception("no name in Modify call", ticket);
+            if(com == INSERT) {
+                if(parent.empty() && root != nullptr) {
+                    return make_exception("insert " + name + ": no parent", ticket);
                 }
+
+                auto new_node = create_node(data);
+                auto e = get_exception(new_node);
+                if(e.empty()) {
+                    insert(std::any_cast<NodeInterface*>(new_node[name]), parent, before);
+                }
+                else return new_node;
             }
-            else {
-                return callback(s);
+            else if(com == REPLACE) {
+                if(instead.empty()) {
+                    return make_exception("replace with " + name + ": no instead", ticket);
+                }
+                else if(!nodes.count(instead)) {
+                    return make_exception("replace " + instead + ": " + instead + " doesn't exist", ticket);
+                }
+
+                auto new_node = create_node(data);
+                auto e = get_exception(new_node);
+                if(e.empty()) {
+                    replace(instead, std::any_cast<NodeInterface*>(new_node[name]));
+                }
+                else return new_node;
             }
-            return {};
+            else if(com == ERASE) {
+                if(!nodes.count(name)) {
+                    return make_exception("replace " + name + ": " + name + " doesn't exist", ticket);
+                }
+
+                erase(name);
+            }
+            return {{OK_WORD, std::any()}, {TICKET_WORD, ticket}};
         }
 
         sample create_node(dictOf<std::string> const& data) {
@@ -141,7 +277,7 @@ namespace abtm {
                     BFunction node_function = (type == "action" ? memory->build_action(expr) : memory->build_condtion(expr));
                     if(type == "action" && true_state.empty())
                         true_state = "SUCCESS";
-                    auto new_node = new Leaf(name, *memory, node_function, from_string(true_state), from_string(false_state));
+                    auto new_node = new Leaf(name, *memory, node_function, from_string(true_state), from_string(false_state), exec_type == Async);
                     if(type == "condition") {
                         link(new_node, memory->used_vars(expr));
                     }
@@ -154,7 +290,7 @@ namespace abtm {
             }
             else {
                 if(type == "parallel") {
-                    auto new_node = new Parallel(SUCCESS, name, *memory);
+                    auto new_node = new Parallel(SUCCESS, name, *memory, exec_type == Async);
                     nodes[name] = new_node;
                     return {{name, (NodeInterface*)new_node}};
                 }
@@ -163,23 +299,20 @@ namespace abtm {
                     if(type == "sequence") return_state = SUCCESS;
                     else if(type == "selector") return_state = FAILURE;
                     else if(type == "skipper") return_state = RUNNING;
-                    auto new_node = new Sequential(return_state, name, *memory);
+                    auto new_node = new Sequential(return_state, name, *memory, exec_type == Async);
                     nodes[name] = new_node;
                     return {{name, (NodeInterface*)new_node}};
                 }
                 else return make_exception("create "+name + ": unknown node type " + type);
             }
         }
-        
-        sample callback(sample const& s) {
 
-        }
         void refresh_orders() {
             if(root)
                 root->bfs_with_handler([](NodeInterface* node) {std::any_cast<ABTM_NodeInfo*>(node->info)->reset_order(node);});
         }
 
-        void link(NodeInterface* node, keys vars) {
+        void link(NodeInterface* node, keys const& vars) {
             for(auto const& v: vars) {
                 links[v].insert(node);
             }
@@ -220,11 +353,26 @@ namespace abtm {
                 delete n;
             }
         }
+
+        void delete_nodes_from(NodeInterface* n) {
+            if(nodes.count(n->id())) {
+                unlink(n);
+                delete std::any_cast<ABTM_NodeInfo*>(n->info);
+                nodes.erase(n->id());
+                for(auto c: n->children) {
+                    delete_nodes_from(c);
+                }
+                delete n;
+            }
+        }
+
         void replace(std::string const& from, NodeInterface* to) {
             if(nodes.count(from)) {
                 auto nfrom = nodes[from];
-                dynamic_cast<ControlInterface*>(std::any_cast<ABTM_NodeInfo*>(nfrom->info)->parent)->replace(nfrom, to);
-                delete_node(nodes[from]);
+                auto parent = std::any_cast<ABTM_NodeInfo*>(nfrom->info)->parent;
+                dynamic_cast<ControlInterface*>(parent)->replace(nfrom, to);
+                to->info = new ABTM_NodeInfo(to, parent);
+                delete_nodes_from(nodes[from]);
                 refresh_orders();
             }
         }
@@ -232,7 +380,7 @@ namespace abtm {
         void erase(std::string const& node) {
             if(nodes.count(node)) {
                 dynamic_cast<ControlInterface*>(std::any_cast<ABTM_NodeInfo*>(nodes[node]->info)->parent)->erase(nodes[node]);
-                delete_node(nodes[node]);
+                delete_nodes_from(nodes[node]);
                 refresh_orders();
             }
         }

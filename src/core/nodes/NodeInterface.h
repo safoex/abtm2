@@ -16,7 +16,7 @@ namespace abtm {
         MemoryInterface& memory;
     public:
         typedef std::function<void(NodeInterface*)> Handler;
-        bool visited;
+        bool visited, deactivation;
         std::any info;
         std::list<NodeInterface*> children;
 
@@ -58,8 +58,8 @@ namespace abtm {
             }
         }
 
-        NodeInterface(std::string const& name, MemoryInterface& memory) : _id(name), memory(memory), visited(false),
-        _state_var("__STATE__" + name) {
+        NodeInterface(std::string const& name, MemoryInterface& memory, bool deactivation = true) : _id(name), memory(memory), visited(false),
+        _state_var("__STATE__" + name), deactivation(deactivation) {
             memory.add_state(state_var(), NodeState::UNDEFINED);
         };
 

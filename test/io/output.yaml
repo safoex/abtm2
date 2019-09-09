@@ -1,0 +1,13 @@
+- __STATE__A1: 1
+  __STATE__C1: 1
+  __STATE__root: 1
+  b: 1
+  x: 2
+- __STATE__C1: 0
+  __STATE__root: 0
+  b: 0
+- __STATE__C1: 1
+  __STATE__root: 1
+  a: 2
+  b: 3
+  x: 4

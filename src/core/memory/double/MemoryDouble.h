@@ -39,8 +39,11 @@ namespace abtm {
             std::lock_guard lockGuard(mutex);
             for (auto const& [k,v]: s) {
                 try {
-                    m[k] = std::any_cast<double>(v);
-                    changed[k] = m[k];
+                    auto new_v = std::any_cast<double>(v);
+                    if(m[k] != new_v) {
+                        m[k] = new_v;
+                        changed[k] = m[k];
+                    }
                 }
                 catch(std::bad_any_cast &e) {
                     throw std::runtime_error("Error: type of value for key \"" + k + "\" is not a double");
@@ -65,8 +68,7 @@ namespace abtm {
         };
 
         void set_state(std::string const& state_var, NodeState ns) override {
-            std::lock_guard lockGuard(mutex);
-            m[state_var] = ns;
+            set({{state_var, double(ns)}});
         };
 
         sample changes() override {
