@@ -50,7 +50,6 @@ namespace abtm {
                     any_state = true;
                 }
             }
-            std::cout << std::endl;
             if(any_state) {
                 std::stringstream sstream;
                 sstream << states;

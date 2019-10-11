@@ -30,7 +30,13 @@ namespace abtm {
         }
 
         NodeState evaluate() override {
-            return leaf_function() ? trueState : falseState;
+            try {
+                return leaf_function() ? trueState : falseState;
+            }
+            catch(std::exception &e) {
+                std::cout << "exception in " << id() << std::endl;
+                throw e;
+            }
         }
 
         void deactivate() override {}

@@ -15,6 +15,7 @@
 #include "io/ros/ROSCommandsConverter.h"
 #include "io/IOExecutor.h"
 #include "io/load/LoadFabric.h"
+#include "io/addons/time/SystemTime.h"
 
 #include "io/ide/AutoReloader.h"
 

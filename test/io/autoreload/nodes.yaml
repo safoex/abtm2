@@ -2,6 +2,7 @@ vars:
   a: ROS.std_msgs.Float32()
   b: ROS.std_msgs.Float32()
   c: "{'data': 0}"
+  time: 0
 #  a: 0
 #  b: 0
 #  c: 0
@@ -28,29 +29,25 @@ nodes:
   root:
     parent: ""
     type: sequence
-    children: [A, V, Z]
+    children: [time_branch, timer_branch]
 
-  A:
-    parent: root
-    type: condition
-    expr: "a.data > b.data"
-    true_state: S
-    false_state: R
+  time_branch:
+    type: t/set_time
+    to: time
 
-  V:
-    parent: root
-    type: t/latch
-    child: D
+  timer_branch:
+    type: t/tick_every
+    period_secs: 1
+    time_var: time
+    child: inc
 
-  D:
-    parent: V
+  inc:
     type: action
-    expr: "c.data = a.data"
+    expr: c.data = c.data + 3
 
-  Z:
-    parent: root
-    type: action
-    expr: "c.data = a.data+4"
+#  tick_every_branch:
+#    type:
+
 
 #  C:
 #    parent: root

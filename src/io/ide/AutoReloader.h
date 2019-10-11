@@ -104,6 +104,8 @@ namespace abtm {
                     catch (std::exception& e) {
                         bad_yaml_files[f] = true;
                         bad_files ++;
+                        if(AUTORELOAD_DEBUG)
+                            std::cout << "bad file caught" << std::endl;
                     }
                 }
                 if(bad_files > 0) {
@@ -126,7 +128,9 @@ namespace abtm {
                     std::this_thread::sleep_for(50ms);
                     had_exception_on_load = false;
                     for(auto const& f: files) {
-                        load_yaml(last_versions[f]);
+                        if(AUTORELOAD_DEBUG)
+                            std::cout << last_versions[f];
+                        load_yaml(YAML::Clone(last_versions[f]));
                     }
                     if(!had_exception_on_load)
                         build_tree();

@@ -9,7 +9,7 @@
 #include "io/IOInterface.h"
 
 
-#define ROS_DEBUG true
+#define ROS_DEBUG false
 
 namespace abtm {
     class ROSTopic : public IOInterface {

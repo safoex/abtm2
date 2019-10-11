@@ -7,6 +7,7 @@
 
 #include "Loaders.h"
 #include "io/ros/ROSCommandsConverter.h"
+#include "io/addons/time/SystemTime.h"
 
 
 namespace abtm {
@@ -42,12 +43,15 @@ namespace abtm {
         ROSLoader *rosl;
         ROSCommandsConverter *rosc;
         ViewRep *vr;
+        SystemTime* st;
         std::string rosbridge_port;
         std::string ros_client_name;
+
         explicit LoadFabric(ABTM::ExecutionType execType, std::string const& rosbridge_port = "localhost:9090", std::string const& ros_client_name = "test") :
         execType(execType), rosbridge_port(rosbridge_port), ros_client_name("test") {
             resetHard();
         }
+
 
         void deleteHard() override {
             delete memory;
@@ -55,6 +59,7 @@ namespace abtm {
         }
 
         void deleteSoft() override {
+            delete st;
             delete executor, io, ls, l, vl, nl, tl, rosl, vr, rosc;
         }
 
@@ -81,10 +86,13 @@ namespace abtm {
             ls->add_loader(rosl->WORD(), rosl, "", nl->WORD());
             ls->executor = executor;
 
+            st = new SystemTime("time");
+            auto f = io->registerIOchannel(st);
             io->registerIOchannel(l);
             io->registerIOchannel(nl);
             io->registerIOchannel(vr);
             io->registerIOchannel(rosc);
+            st->start_in_separate_thread(f);
         }
 
         ~LoadFabric() {

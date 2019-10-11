@@ -6,7 +6,7 @@
 #define ABTM2_VARSLOADER_H
 #include "Loader.h"
 
-#define VARS_LOADER_DEBUG true
+#define VARS_LOADER_DEBUG false
 namespace abtm {
     template<typename T>
     class VarsLoader : public Loader {

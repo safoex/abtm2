@@ -1,9 +1,14 @@
-ros:
-#  /abtm/tree_description:
-#    type: publisher
-#    var: __DOT_TREE_ROS_MSG__
-#    msg: std_msgs/String
+vars:
+  clock: ROS.rosgraph_msgs.Clock()
+  ROS_SIM: "'ros_sim'"
+  ENV: "''"
+  sys_time: 0
+  SUCCESS: 1
+  FAILURE: 2
+  RUNNING: 0
+  UNDEFINED: 3
 
+ros:
   /abtm/exception:
     type: publisher
     var: __ROS_EXCEPTION__
@@ -24,19 +29,27 @@ ros:
     var: __ROS_COMMAND__
     msg: std_msgs/String
 
+  /clock:
+    type: subscriber
+    var: clock
+    msg: rosgraph_msgs/Clock
+
 templates:
+  cast_ros_clock_to_sec:
+    args:
+      required: [to, from]
+    nodes:
+      $name:
+        type: action
+        expr: $to = $from.clock.secs + $from.clock.nsecs/1000000000
+    children: []
+
   condition:
     args:
       required: [parent]
       optional:
         S: default
         F: default
-
-    vars:
-      SUCCESS: 1
-      FAILURE: 2
-      RUNNING: 0
-      UNDEFINED: 3
 
     nodes:
       $name:
@@ -62,14 +75,13 @@ templates:
 
   latch:
     args:
-      required: [child, parent]
+      required: [child]
 
-    var:
-      __STATE__$child: [input, UNDEFINED]
+    vars:
+      __STATE__$child: "UNDEFINED"
 
     nodes:
       $name:
-        parent: $parent
         type: skipper
         children: [~mask, $child]
 
@@ -80,3 +92,138 @@ templates:
         F: __STATE__$child == FAILURE
 
     children: [$child]
+
+  set_time:
+    args:
+      required: [to]
+      optional:
+        env: ENV
+        ros_clock_var: clock
+        system_time_var: sys_time
+
+    nodes:
+      $name:
+        type: selector
+        children: [~select_ros_sim, ~set_sys_time]
+
+      ~select_ros_sim:
+        type: sequence
+        children: [~if_ros_sim, ~set_ros_sim]
+
+      ~if_ros_sim:
+        type: condition
+        expr: $env == ROS_SIM
+        true_state: S
+        false_state: F
+
+      ~set_ros_sim:
+        type: t/cast_ros_clock_to_sec
+        from: $ros_clock_var
+        to: $to
+
+      ~set_sys_time:
+        type: action
+        expr: $to = $system_time_var
+
+    children: []
+
+  timer_simple:
+    args:
+      required: [start_state, end_state, delay_secs, time_var]
+      optional:
+        start_time: ~start_time
+
+    vars:
+      $start_time: $time_var
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~latched_start_timer, ~end_condition]
+        view:
+          from: $start_state
+          to: $end_state
+          delay: $delay_secs
+
+      ~latched_start_timer:
+        type: t/latch
+        child: ~start_timer
+
+      ~start_timer:
+        type: action
+        expr: $start_time = $time_var
+
+      ~end_condition:
+        type: condition
+        expr: $time_var - $start_time > $delay_secs
+        true_state: $end_state
+        false_state: $start_state
+
+    children: []
+
+  timer_advanced:
+    args:
+      required: [start_state, end_state, delay_secs]
+      optional:
+        start_time: ~start_time
+
+    vars:
+      $current_time: 0
+      $start_time: 0
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~update_time, ~timer_simple]
+
+      ~update_time:
+        type: t/set_time
+        to: $current_time
+
+      ~timer_simple:
+        type: t/timer_simple
+        start_state: $start_state
+        end_state: $end_state
+        delay_secs: $delay_secs
+        time_var: $current_time
+        start_time: $start_time
+
+      children: []
+
+
+
+  tick_every:
+    args:
+      required: [period_secs, child, time_var]
+      optional:
+        start_time_var: ~start_time_var
+
+    vars:
+      $start_time_var: 0
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~timer, ~reset, $child]
+        view:
+          delay: $period_secs
+
+      ~timer:
+        type: t/timer_simple
+        start_state: RUNNING
+        end_state: SUCCESS
+        delay_secs: $period_secs
+        time_var: $time_var
+        start_time: $start_time_var
+
+      ~reset:
+        type: action
+        expr: $start_time_var = $time_var
+
+    children: [$child]
+
+
+
+
+
+

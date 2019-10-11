@@ -11,7 +11,7 @@
 #include "core/exec/ABTM.h"
 
 
-#define LOADER_DEBUG true
+#define LOADER_DEBUG false
 
 namespace abtm {
     class Loader;

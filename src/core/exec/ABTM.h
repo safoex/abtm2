@@ -227,16 +227,18 @@ namespace abtm {
         sample callback_sync_topdown(sample const& s) {
 
             if(s.count(TICK_WORD)){
+//                std::cout << from_sample<std::string>(memory->update({{"time", std::string("0")}}))["time"] << std::endl;
+//                std::cout << from_sample<std::string>(memory->update({{"_timer_branch_start_time_var", std::string("0")}}))["_timer_branch_start_time_var"] << std::endl;
                 root->bfs_with_handler([](NodeInterface* n) {n->visited = false;});
                 root->tick();
                 output_stash = memory->changes();
                 memory->flush();
-                if(!output_stash.empty()) {
-                    for(auto const& [k,v]: output_stash) {
-                        std::cout << k << '\t';
-                    }
-                    std::cout << std::endl;
-                }
+//                if(!output_stash.empty()) {
+//                    for(auto const& [k,v]: output_stash) {
+//                        std::cout << k << '\t';
+//                    }
+//                    std::cout << std::endl;
+//                }
                 return output_stash;
             }
             else {
@@ -311,7 +313,7 @@ namespace abtm {
                     return {{name, (NodeInterface*)new_node}};
                 }
                 else {
-                    return make_exception("create "+name + ": bad expression");
+                    return make_exception("create "+name + ": bad expression \"" + expr + "\"");
                 }
             }
             else {

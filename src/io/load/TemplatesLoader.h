@@ -90,6 +90,8 @@ namespace abtm {
                                 return make_exception("No argument " + arg + " by templated node " + id, ticket);
                         }
                     if(t_args["optional"]) {
+                        if(!t_args["optional"].IsMap())
+                            return make_exception("template " + type + ": optional args should be a Map");
                         for(auto const& oa: t_args["optional"]) {
                             std::string const& arg = oa.first.as < std::string >();
                             YAML::Node arg_node;
@@ -232,6 +234,8 @@ namespace abtm {
                         auto const &to = a.second.as<std::string>();
                         auto const &arg = a.first;
                         auto from = var_symbol_regex + arg;
+
+                        //std::cout << "from: " << from << " to: "<< to << std::endl << t_str << std::endl << std::endl;
                         t_str = std::regex_replace(t_str, std::regex(from), to);
                     }
                 }

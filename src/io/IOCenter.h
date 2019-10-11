@@ -102,10 +102,11 @@ namespace abtm {
         }
 
         void process() {
+            std::lock_guard lockGuard(lock);
             while (!tasks.empty()) {
                 auto task = tasks.top();
                 tasks.pop();
-                process_once_v2(task.msg, task.direction, task.channel);
+                process_once_v2(task.msg, task.direction, task.channel, false);
             }
         }
 
@@ -193,8 +194,16 @@ namespace abtm {
         // INPUT - from channel
         // OUTPUT - to channel
 
-        void process_once_v2(sample const& s, IO_DIRECTION direction, IOInterface *channel) {
-            std::lock_guard lockGuard(lock);
+        void process_once_v2(sample const& s, IO_DIRECTION direction, IOInterface *channel, bool need_to_lock = true) {
+            if(need_to_lock) {
+                std::lock_guard lockGuard(lock);
+                process_once_v2_no_lock(s, direction, channel);
+            }
+            else {
+                process_once_v2_no_lock(s, direction, channel);
+            }
+        }
+        void process_once_v2_no_lock(sample const& s, IO_DIRECTION direction, IOInterface *channel) {
 
             if(direction == IO_INPUT) {
                 if(IO_DEBUG)
@@ -222,12 +231,16 @@ namespace abtm {
                     std::cout << std::endl;
                 }
                 sample res;
+#ifndef DEBUG_MODE
                 try {
+#endif
                     res = channel->process(s);
+#ifndef DEBUG_MODE
                 }
                 catch(std::exception& e) {
                     res = make_exception(e.what());
                 }
+#endif
                 if(IO_DEBUG)
                     if(!get_exception(res).empty())
                         std::cout << get_exception(res) << std::endl;

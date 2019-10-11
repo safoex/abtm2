@@ -75,8 +75,7 @@
 #define RELOAD_COMMAND {{RELOAD_COMMAND_WORD, nullptr}}
 
 
-#define DEBUG_MODE
-#undef DEBUG_MODE
+//#define DEBUG_MODE
 
 
 

@@ -17,6 +17,8 @@ namespace abtm {
             dictOf<std::string> node_info;
 
             node_info["name"] = name;
+            if(!node["type"])
+                throw std::runtime_error("Node " + name + " does not have a type field!");
             auto type = node["type"].as<std::string>();
             if (node.IsMap())
                 for (auto const &kv: node) {
@@ -60,10 +62,11 @@ namespace abtm {
                     if (new_nodes.count(n)) {
                         to_insert.push(n);
                     }
-                    if (loaders->tree_description[n]["children"])
+                    if (loaders->tree_description[n]["children"]) {
                         for (auto const &nc: loaders->tree_description[n]["children"]) {
                             next2.push_back(nc.as<std::string>());
                         }
+                    }
                 }
                 next = std::move(next2);
                 next2.clear();
@@ -159,6 +162,17 @@ namespace abtm {
             }
         }
 
+        void fix_parent_for_children_of(std::string const& name) {
+            auto &td = loaders->tree_description;
+            if(td[name]["children"]) {
+                for(auto const& p: td[name]["children"]) {
+                    auto const &child = p.as<std::string>();
+                    if(td.count(child))
+                        td[child]["parent"] = name;
+                }
+            }
+        }
+
         sample build_tree(sample const& s) {
             auto ticket = std::any_cast<std::string>(s.at(TICKET_WORD));
             sample result;
@@ -166,8 +180,9 @@ namespace abtm {
             if(NODES_DEBUG)
                 std::cout << "building queue size " << q.size() << std::endl;
             while (!q.empty()) {
-                auto const& next = q.front();
+                auto next = q.front();
                 q.pop();
+                fix_parent_for_children_of(next);
                 auto const& node_info = get_node_info(next, loaders->tree_description[next]);
                 auto response = loaders->executor->execute(ABTM::pack(ABTM::Modify, ABTM::INSERT, node_info, ticket));
                 if (!get_exception(response).empty()) {
