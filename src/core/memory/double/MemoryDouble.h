@@ -53,7 +53,8 @@ namespace abtm {
         sample& update(sample& s) override {
             std::lock_guard lockGuard(mutex);
             for (auto const& [k,v]: s) {
-                s[k] = m[k];
+                if(m.count(k))
+                    s[k] = m.at(k);
             }
             return s;
         };

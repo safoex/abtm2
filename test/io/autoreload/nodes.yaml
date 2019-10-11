@@ -1,0 +1,60 @@
+vars:
+  a: ROS.std_msgs.Float32()
+  b: ROS.std_msgs.Float32()
+  c: "{'data': 0}"
+#  a: 0
+#  b: 0
+#  c: 0
+
+ros:
+  /abtm/a:
+    type: subscriber
+    var: a
+    msg: std_msgs/Float32
+
+  /abtm/b:
+    type: subscriber
+    var: b
+    msg: std_msgs/Float32
+
+  /abtm/c:
+    type: publisher
+    var: c
+    msg: std_msgs/Float32
+
+
+
+nodes:
+  root:
+    parent: ""
+    type: sequence
+    children: [A, V, Z]
+
+  A:
+    parent: root
+    type: condition
+    expr: "a.data > b.data"
+    true_state: S
+    false_state: R
+
+  V:
+    parent: root
+    type: t/latch
+    child: D
+
+  D:
+    parent: V
+    type: action
+    expr: "c.data = a.data"
+
+  Z:
+    parent: root
+    type: action
+    expr: "c.data = a.data+4"
+
+#  C:
+#    parent: root
+#    type: condition
+#    expr: "a < b"
+#    true_state: S
+#    false_state: R

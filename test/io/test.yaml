@@ -1,0 +1,101 @@
+vars:
+  a: 0
+  b: 0
+  c: 0
+
+ros:
+  /abtm/tree_description:
+    type: publisher
+    var: __DOT_TREE_ROS_MSG__
+    msg: std_msgs/String
+
+  /abtm/build_exception:
+    type: publisher
+    var: __EXCEPTION__
+    msg: std_msgs/String
+
+templates:
+  condition:
+    args:
+      required: [parent]
+      optional:
+        S: default
+        F: default
+
+    vars:
+      SUCCESS: 1
+      FAILURE: 2
+      RUNNING: 0
+
+    nodes:
+      $name:
+        parent: $parent
+        type: skipper
+        children: [~SR, ~FR]
+
+      ~SR:
+        parent: $name
+        type: condition
+        expr: $S
+        true_state: SUCCESS
+        false_state: RUNNING
+
+      ~FR:
+        parent: $name
+        type: condition
+        expr: $F
+        true_state: FAILURE
+        false_state: RUNNING
+
+    children: []
+
+  latch:
+    args:
+      required: [child, parent]
+
+    var:
+      __STATE__$child: [input, UNDEFINED]
+
+    nodes:
+      $name:
+        parent: $parent
+        type: skipper
+        children: [~mask, $child]
+
+      ~mask:
+        parent: $name
+        type: t/condition
+        S: __STATE__$child = SUCCESS
+        F: __STATE__$child = FAILURE
+
+    children: [$child]
+
+nodes:
+  root:
+    parent: ""
+    type: sequence
+    children: [A, V]
+
+  A:
+    parent: root
+    type: condition
+    expr: "a > b"
+    true_state: S
+    false_state: R
+
+  V:
+    parent: root
+    type: t/latch
+    child: B
+
+  B:
+    parent: V
+    type: action
+    expr: "c:= 1"
+
+#  C:
+#    parent: root
+#    type: condition
+#    expr: "a < b"
+#    true_state: S
+#    false_state: R

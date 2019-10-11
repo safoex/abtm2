@@ -5,11 +5,13 @@
 #ifndef ABTM2_VARSLOADER_H
 #define ABTM2_VARSLOADER_H
 #include "Loader.h"
+
+#define VARS_LOADER_DEBUG true
 namespace abtm {
     template<typename T>
     class VarsLoader : public Loader {
     public:
-        VarsLoader() = default;
+        VarsLoader(Loaders* loaders) : Loader(loaders) {};
         sample load_yaml(sample const& s, YAML::Node const& yn) override {
             auto ticket = std::any_cast<std::string>(s.at(TICKET_WORD));
             if(yn.IsMap()) {
@@ -18,6 +20,8 @@ namespace abtm {
 
                 for(auto const& ynn: yn) {
                     auto key = ynn.first.as<std::string>();
+                    if(VARS_LOADER_DEBUG)
+                        std::cout << '\t' << "loading var " << key << std::endl;
                     T value;
                     try {
                         value = ynn.second.as<T>();
@@ -30,10 +34,12 @@ namespace abtm {
                 }
                 if(get_exception(result).empty()) {
                     try {
-                        executor->memory->add(vars);
+                        loaders->executor->memory->add(vars);
                     }
                     catch (std::runtime_error & e) {
                         result = make_exception(std::string("exception occured while loading vars: ") + e.what(), ticket);
+                        if(VARS_LOADER_DEBUG)
+                            std::cout << get_exception(result) << std::endl;
                     }
                 }
                 result[RESPONSE_WORD] = result.empty() ? OK_WORD : EXCEPTION_WORD;

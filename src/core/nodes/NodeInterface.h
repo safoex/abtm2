@@ -59,7 +59,7 @@ namespace abtm {
         }
 
         NodeInterface(std::string const& name, MemoryInterface& memory, bool deactivation = true) : _id(name), memory(memory), visited(false),
-        _state_var("__STATE__" + name), deactivation(deactivation) {
+        _state_var(STATE_WORD + name), deactivation(deactivation) {
             memory.add_state(state_var(), NodeState::UNDEFINED);
         };
 

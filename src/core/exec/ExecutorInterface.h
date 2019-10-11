@@ -40,14 +40,17 @@ namespace abtm {
         explicit ExecutorInterface(MemoryInterface* memory = nullptr) : memory(memory), state(NOT_STARTED) {}
         virtual sample execute(sample const& ) = 0;
         static sample pack(CommandType commandType, uint command, std::any const& data = std::any(), std::string const& ticket = "") {
-            return {{EXECUTOR_COMMAND_WORD, Command{commandType, command, data, ticket}}};
+            return {{EXECUTOR_COMMAND_WORD, nullptr}, {COMMAND_TYPE_WORD, (int)commandType},
+                    {COMMAND_WORD, (int)command}, {TICKET_WORD, ticket}, {DATA_WORD, data}};
         }
         static Command unpack(sample const& s) {
-            if(s.size() == 1 && s.count((EXECUTOR_COMMAND_WORD))) {
+            if(s.size() == 5 && s.count((EXECUTOR_COMMAND_WORD))) {
                 try {
-                    return std::any_cast<Command>(s.at(EXECUTOR_COMMAND_WORD));
+                    return Command{std::any_cast<int>(s.at(COMMAND_TYPE_WORD)),
+                            std::any_cast<int>(s.at(COMMAND_WORD)), s.at(DATA_WORD),
+                            std::any_cast<std::string>(s.at(TICKET_WORD))};
                 }
-                catch (std::bad_any_cast &e) {
+                catch (std::exception &e) {
                     return {-1, -1, std::any(), ""};
                 }
             }

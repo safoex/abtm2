@@ -8,6 +8,8 @@
 #include "core/common.h"
 #include "NodeInterface.h"
 
+#define LEAF_DEBUG true
+
 namespace abtm {
     class Leaf : public NodeInterface {
     protected:

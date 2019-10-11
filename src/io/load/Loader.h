@@ -11,13 +11,18 @@
 #include "core/exec/ABTM.h"
 
 
+#define LOADER_DEBUG true
+
 namespace abtm {
-    class Loader : public IOInterface {
-    protected:
-        static dictOf<Loader*> loaders;
-        static std::list<std::string> loader_queue;
+    class Loader;
+
+    class Loaders {
     public:
-        static void add_loader(std::string const& name, Loader* loader, std::string const& before = "", std::string const& after = "") {
+        dictOf<Loader*> loaders;
+        std::list<std::string> loader_queue;
+        tree_rep tree_description;
+    public:
+        void add_loader(std::string const& name, Loader* loader, std::string const& before = "", std::string const& after = "") {
             loaders[name] = loader;
             if(!before.empty() && after.empty()) {
                 loader_queue.insert(std::find(loader_queue.begin(), loader_queue.end(), before), name);
@@ -31,11 +36,17 @@ namespace abtm {
                 loader_queue.insert(after_pos, name);
             }
         }
-        static ABTM* executor;
+        ABTM* executor;
+        Loaders(ABTM* executor = nullptr) : executor(executor) {} ;
+    };
+
+    class Loader : public IOInterface {
+    public:
         keys dependencies, prerequisties, optional_prerequisties;
         dictOf <std::string> tickets;
-        Loader()   {
-            trigger_vars = {{WORD(), nullptr}, {RESPONSE_WORD, nullptr}};
+        Loaders* loaders;
+        Loader(Loaders* loaders) : loaders(loaders)   {
+            trigger_vars = {{LOAD_WORD, nullptr}, {RESPONSE_WORD, nullptr}};
             required_vars = ALL_CHANGED;
         }
 
@@ -45,7 +56,7 @@ namespace abtm {
                 if(!s.count(FORMAT_WORD))
                     s[FORMAT_WORD] = std::string(YAML_WORD);
                 if(!s.count(TICKET_WORD))
-                    s[TICKET_WORD] = "";
+                    s[TICKET_WORD] = std::string("");
                 return load(s);
             }
             else return {};
@@ -65,12 +76,16 @@ namespace abtm {
             auto ticket = std::any_cast<std::string>(s.at(TICKET_WORD));
             if(yn.IsMap()) {
                 sample result;
-                for(auto const& l: loader_queue) {
+                for(auto const& l: loaders->loader_queue) {
                     if(yn[l]) {
-                        auto L = loaders[l];
+                        auto L = loaders->loaders[l];
+                        if(LOADER_DEBUG)
+                            std::cout << "loading "+ L->WORD() << std::endl;
                         auto res = L->process({{L->WORD(), yn[l]}, {FORMAT_WORD, std::string(YAML_WORD)}, {KEY_WORD, l}/*, {TICKET_WORD, tickets[ticket]}*/});
                         if(!res.count(RESPONSE_WORD) || std::any_cast<std::string>(res.at(RESPONSE_WORD)) != OK_WORD) {
                             result = res;
+                            if(LOADER_DEBUG)
+                                std::cout << "FAIL" << std::endl;
                             break;
                         }
                     }
@@ -119,7 +134,34 @@ namespace abtm {
             return LOAD_WORD;
         }
 
+
+        template <typename T>
+        static T load(const YAML::Node &node, std::string const &key) {
+            if(node[key]) {
+                try {
+                    return node[key].as<T>();
+                }
+                catch(YAML::Exception &e){
+                    throw YAML::Exception(YAML::Mark::null_mark(), std::string() + "Error while reading " + key + " " + e.what());
+                }
+            }
+            return T();
+        }
+
+        template <typename T>
+        static T& load(const YAML::Node &node, std::string const &key, T& to) {
+            if(node[key]) {
+                try {
+                    to = node[key].as<T>();
+                }
+                catch(YAML::Exception &e){
+                    throw YAML::Exception(YAML::Mark::null_mark(), std::string() + "Error while reading " + key + " " + e.what());
+                }
+            }
+            return to;
+        }
     };
 }
+
 
 #endif //ABTM2_LOADER_H

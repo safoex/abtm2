@@ -25,7 +25,7 @@ int main(){
     };
     auto s = tree.execute(ABTM::pack(ExecutorInterface::Modify, ExecutorInterface::INSERT,  root_node));
 
-    test_ok = s.count(OK_WORD);
+    test_ok = ok_response(s);
     TESTE(test_ok, "0.0: insert root (sequence)", s);
 
     dictOf<double> vars = {{"x",0},{"b",0},{"a",0}};
@@ -41,7 +41,7 @@ int main(){
                 {"false_state", "RUNNING"}
         })));
 
-    test_ok = s.count(OK_WORD);
+    test_ok = ok_response(s);
     TESTE(test_ok, "0.1: insert C1 (condition)",s);
 
     s = tree.execute(ABTM::pack(ExecutorInterface::Modify, ExecutorInterface::INSERT,
@@ -52,7 +52,7 @@ int main(){
                   {"expr", "x:= a+2"}
           })));
 
-    test_ok = s.count(OK_WORD);
+    test_ok = ok_response(s);
     TESTE(test_ok, "0.2: insert A1 (action)",s);
 
     s = tree.execute(ABTM::pack(ExecutorInterface::Execute, ExecutorInterface::START));
@@ -72,7 +72,7 @@ int main(){
                     {"name", "C1"}
             })));
 
-    test_ok = s.count(OK_WORD);
+    test_ok = ok_response(s);
     TESTE(test_ok, "2.0: massive change at run-time, ERASE", s);
 
     s = tree.execute(ABTM::pack(ExecutorInterface::Modify, ExecutorInterface::REPLACE,
@@ -83,7 +83,7 @@ int main(){
                     {"expr", "b:= 0"}
             })));
 
-    test_ok = s.count(OK_WORD);
+    test_ok = ok_response(s);
     TESTE(test_ok, "2.1: massive change at run-time, REPLACE", s);
 
     s = tree.execute(ABTM::pack(ExecutorInterface::Modify, ExecutorInterface::INSERT,
@@ -93,7 +93,7 @@ int main(){
                     {"type", "parallel"}
             })));
 
-    test_ok = s.count(OK_WORD);
+    test_ok = ok_response(s);
     TESTE(test_ok, "2.2: massive change at run-time, INSERT 1", s);
 
     s = tree.execute(ABTM::pack(ExecutorInterface::Modify, ExecutorInterface::INSERT,
@@ -104,7 +104,7 @@ int main(){
                     {"expr", "x:= b+3"}
             })));
 
-    test_ok = s.count(OK_WORD);
+    test_ok = ok_response(s);
     TESTE(test_ok, "2.3: massive change at run-time, INSERT 2", s);
 
     s = tree.execute(ABTM::pack(ExecutorInterface::Modify, ExecutorInterface::INSERT,
@@ -117,7 +117,7 @@ int main(){
                     {"false_state", "RUNNING"}
             })));
 
-    test_ok = s.count(OK_WORD);
+    test_ok = ok_response(s);
     TESTE(test_ok, "2.4: massive change at run-time, INSERT 3", s);
 
     s = tree.execute(ABTM::pack(ExecutorInterface::Modify, ExecutorInterface::INSERT,
@@ -131,7 +131,7 @@ int main(){
                     {"before", "A3"}
             })));
 
-    test_ok = s.count(OK_WORD);
+    test_ok = ok_response(s);
     TESTE(test_ok, "2.4: massive change at run-time, INSERT 4 (before)", s);
 
 //    UPDATED(memory, vars);

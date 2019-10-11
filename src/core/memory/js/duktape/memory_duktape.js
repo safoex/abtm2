@@ -45,7 +45,7 @@ function set_var(name, val) {
     var _k;
     for(_k in splitted) {
         var k = splitted[_k];
-        if(!(k in v) && _k !== splitted.length - 1)
+        if(!(k in v) || _k !== splitted.length - 1)
             v[k] = {};
         else if(_k !== splitted.length -1)
             v = v[k];
@@ -103,7 +103,7 @@ function flush() {
 function log_window() {
     var Z = {};
     for(var k in window) {
-        if(k !== "window" && k !== "Z" && typeof window[k] !== "function") {
+        if(k !== "window" && k !== "Z" && typeof window[k] !== "function" && k !== "ROS") {
             Z[k] = window[k];
         }
     }

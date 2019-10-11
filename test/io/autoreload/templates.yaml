@@ -1,0 +1,82 @@
+ros:
+#  /abtm/tree_description:
+#    type: publisher
+#    var: __DOT_TREE_ROS_MSG__
+#    msg: std_msgs/String
+
+  /abtm/exception:
+    type: publisher
+    var: __ROS_EXCEPTION__
+    msg: std_msgs/String
+
+  /abtm/yaml_tree_description:
+    type: publisher
+    var: __ROS_YAML_TREE__
+    msg: std_msgs/String
+
+  /abtm/yaml_state_changes:
+    type: publisher
+    var: __ROS_STATE_CHANGES__
+    msg: std_msgs/String
+
+  /abtm/yaml_command:
+    type: subscriber
+    var: __ROS_COMMAND__
+    msg: std_msgs/String
+
+templates:
+  condition:
+    args:
+      required: [parent]
+      optional:
+        S: default
+        F: default
+
+    vars:
+      SUCCESS: 1
+      FAILURE: 2
+      RUNNING: 0
+      UNDEFINED: 3
+
+    nodes:
+      $name:
+        parent: $parent
+        type: skipper
+        children: [~SR, ~FR]
+
+      ~SR:
+        parent: $name
+        type: condition
+        expr: $S
+        true_state: SUCCESS
+        false_state: RUNNING
+
+      ~FR:
+        parent: $name
+        type: condition
+        expr: $F
+        true_state: FAILURE
+        false_state: RUNNING
+
+    children: []
+
+  latch:
+    args:
+      required: [child, parent]
+
+    var:
+      __STATE__$child: [input, UNDEFINED]
+
+    nodes:
+      $name:
+        parent: $parent
+        type: skipper
+        children: [~mask, $child]
+
+      ~mask:
+        parent: $name
+        type: t/condition
+        S: __STATE__$child == SUCCESS
+        F: __STATE__$child == FAILURE
+
+    children: [$child]

@@ -71,22 +71,36 @@ namespace abtm {
     protected:
         std::queue<sample> stash;
         std::priority_queue<NodeInterface*, std::vector<NodeInterface*>, ABTM_NodeCompare> tick_queue;
-        dictOf <NodeInterface*> nodes;
         dictOf <std::unordered_set<NodeInterface*>> links;
         ExecutionType exec_type;
-        ControlInterface* root;
         sample output_stash;
+        trace exec_trace;
         std::mutex mutex;
     public:
+        dictOf <NodeInterface*> nodes;
+        ControlInterface* root;
         explicit ABTM(ExecutionType executionType, MemoryInterface* memory = nullptr) : ExecutorInterface(memory),
         exec_type(executionType), root(nullptr) {}
+
+        sample filter_keywords_except_for_tick(sample const& s) {
+            sample res;
+            for(auto const& [k,v] : s) {
+                if(!is_keyword(k) || k == TICK_WORD) {
+                    res[k] = v;
+                }
+            }
+            return res;
+        }
+
         sample execute(sample const& s) override {
             std::lock_guard lockGuard(mutex);
 
             sample result;
             auto [type, com, _data, ticket] = unpack(s);
+
             if(type == Execute) {
                 if(state == NOT_STARTED) {
+                    // start tree
                     if(ExecutorInterface::Execution(com) == START) {
                         state = ExecutorInterface::Execution(com);
                         if(exec_type == Async) {
@@ -95,7 +109,6 @@ namespace abtm {
                     }
                 }
                 else state = ExecutorInterface::Execution(com);
-
             }
             else if(type == Modify) {
                 auto data = std::any_cast<dictOf <std::string>>(_data);
@@ -106,7 +119,7 @@ namespace abtm {
 #ifdef DROP_TICKS_ON_PAUSE
                     if(!(state == PAUSE && s.count(TICK_WORD)))
 #endif
-                    stash.push(s);
+                    stash.push(filter_keywords_except_for_tick(s));
 
                 }
                 if (state == START) {
@@ -139,6 +152,7 @@ namespace abtm {
             auto s = memory->changes();
             for(auto const& [k,v]: s)
                 output_stash[k] = v;
+            exec_trace.push(s);
             memory->flush();
 
             std::unordered_set <NodeInterface*> possibly_changed_conditions{};
@@ -150,20 +164,25 @@ namespace abtm {
 
             // 2: check if state has really changed
             // 3: clear .visited field from these conditions
+            sample changed_conditions;
             for(NodeInterface* node: possibly_changed_conditions) {
                 if(node->state() != node->evaluate()) {
                     tick_queue.push(node);
+                    changed_conditions[node->id()] = std::string(CHANGED_WORD);
                     while (node != nullptr) {
                         node->visited = false;
                         node = std::any_cast<ABTM_NodeInfo*>(node->info)->parent;
                     }
                 }
             }
+            exec_trace.push(changed_conditions);
 
             // 4:
             if(!tick_queue.empty()) {
                 auto node = tick_queue.top();
                 tick_queue.pop();
+                if(node)
+                    exec_trace.push({{node->id(), TICK_WORD}});
                 if(node && node->state() != node->tick()) {
                     tick_queue.push(std::any_cast<ABTM_NodeInfo*>(node->info)->parent);
                 }
@@ -183,6 +202,7 @@ namespace abtm {
 
             // 1: clear old output
             output_stash.clear();
+            exec_trace = {};
 
             // 2: clear .visited for all nodes
             root->bfs_with_handler([](NodeInterface* n) {n->visited = false;});
@@ -191,6 +211,7 @@ namespace abtm {
             while(propogate_once_bottomup());
 
             // 4: return output
+            output_stash[TRACE_WORD] = exec_trace;
             return output_stash;
         }
 
@@ -210,6 +231,12 @@ namespace abtm {
                 root->tick();
                 output_stash = memory->changes();
                 memory->flush();
+                if(!output_stash.empty()) {
+                    for(auto const& [k,v]: output_stash) {
+                        std::cout << k << '\t';
+                    }
+                    std::cout << std::endl;
+                }
                 return output_stash;
             }
             else {
@@ -221,7 +248,6 @@ namespace abtm {
 
 
         sample modify(Modification com, dictOf<std::string> data, std::string const& ticket = "") {
-
             std::string type = data["type"],
                     name = data["name"],
                     expr = data["expr"],
@@ -265,7 +291,7 @@ namespace abtm {
 
                 erase(name);
             }
-            return {{OK_WORD, std::any()}, {TICKET_WORD, ticket}};
+            return {{RESPONSE_WORD, OK_WORD}, {TICKET_WORD, ticket}};
         }
 
         sample create_node(dictOf<std::string> const& data) {

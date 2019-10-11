@@ -13,7 +13,7 @@
 #include "rapidjson/document.h"
 #include <iomanip>
 
-
+#define MEM_DUKTAPE_DEBUG false
 
 namespace abtm {
 
@@ -46,8 +46,11 @@ namespace abtm {
     protected:
         duk_context* ctx;
         std::mutex mutex;
+        keys vars;
         void eval_no_lock(std::string const& eval_str, std::string const& error_str = "") {
             duk_push_string(ctx, eval_str.c_str());
+            if(MEM_DUKTAPE_DEBUG)
+                std::cout << eval_str << std::endl;
             if(duk_peval(ctx) != 0) {
                 if(error_str.empty())
                     throw std::runtime_error("Error! Bad expression: " + eval_str);
@@ -94,12 +97,20 @@ namespace abtm {
 
         void add(sample const & s) override {
             std::lock_guard lockGuard(mutex);
-            std::stringstream cmd;
             for(auto const& [k,v]: s) {
+                std::stringstream cmd;
                 std::string init_str = get_from_any(v);
                 cmd << "add('" << k << "\', " << init_str << ");";
                 eval_no_lock(cmd.str());
                 cmd.clear();
+                vars.insert(k);
+            }
+
+            if(MEM_DUKTAPE_DEBUG) {
+                eval("log_window();", "", false);
+                std::string log = duk_get_string(ctx, -1);
+
+                std::cout << "WINDOW: " << log << std::endl;
             }
         };
 
@@ -115,7 +126,8 @@ namespace abtm {
         sample& update(sample &s) override {
             std::lock_guard lockGuard(mutex);
             for(auto &[k,v]: s) {
-                s[k] = get_var(k, false);
+                if(vars.count(k))
+                    s[k] = get_var(k, false);
             }
             clear_duk_stack();
             return s;
@@ -141,11 +153,20 @@ namespace abtm {
             eval("poll_changes();", "", false);
             eval("get_changes();", "", false);
             rapidjson::Document d;
-            d.Parse(duk_get_string(ctx, -1));
+            std::string changes = duk_get_string(ctx, -1);
+            if(MEM_DUKTAPE_DEBUG)
+                std::cout << "CHANGES : " << changes<< std::endl;
+            d.Parse(changes.c_str());
             sample result;
             for(auto k = d.MemberBegin(); k != d.MemberEnd(); ++k) {
                 std::string var = k->name.GetString(), val =  k->value.GetString();
                 result[var] = val;
+            }
+            if(MEM_DUKTAPE_DEBUG && false) {
+                eval("log_window();", "", false);
+                std::string log = duk_get_string(ctx, -1);
+
+                std::cout << "WINDOW: " << log << std::endl;
             }
             clear_duk_stack();
             return result;

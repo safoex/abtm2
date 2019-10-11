@@ -15,32 +15,68 @@
 #include <sstream>
 #include <iostream>
 #include <mutex>
+#include <queue>
+#include "yaml-cpp/yaml.h"
+
+#include <iostream>
+#include <chrono>
+#include <cstdlib>
 
 #define SCREAM(x) for(int i = 0; i < 20; i++) std::cout << x; std::cout << std::endl;
-#define EXCEPTION_WORD "__EXCEPTION__"
+#define EXCEPTION_WORD std::string("__EXCEPTION__")
+#define EMPTY_STR std::string()
 
-#define ALL_CHANGED_WORD "__ALL_CHANGED__"
-#define ALL_MEMORY_WORD "__ALL_MEMORY__"
-#define ON_EVERY_WORD "__ON_EVERY__"
+
+#define ALL_CHANGED_WORD std::string("__ALL_CHANGED__")
+#define ALL_MEMORY_WORD std::string("__ALL_MEMORY__")
+#define ON_EVERY_WORD std::string("__ON_EVERY__")
+#define STATE_WORD std::string("__STATE__")
 
 #define ALL_CHANGED sample{{ALL_CHANGED_WORD, std::any()}}
 #define ALL_MEMORY sample{{ALL_MEMORY_WORD, std::any()}}
 #define ON_EVERY sample{{ON_EVERY_WORD, std::any()}}
 
-#define LOAD_WORD "__LOAD__"
-#define RESPONSE_WORD "__RESPONSE__"
-#define TICKET_WORD "__TICKET__"
-#define FORMAT_WORD "__FORMAT__"
-#define YAML_WORD "__YAML__"
-#define JSON_WORD "__JSON__"
-#define YAML_STR_WORD "__YAML_STR__"
-#define JSON_STR_WORD "__JSON_STR__"
-#define KEY_WORD "__KEY__"
+#define LOAD_WORD std::string("__LOAD__")
+#define UNLOAD_WORD std::string("__UNLOAD__")
+#define RESPONSE_WORD std::string("__RESPONSE__")
+#define TICKET_WORD std::string("__TICKET__")
+#define FORMAT_WORD std::string("__FORMAT__")
+#define YAML_WORD std::string("__YAML__")
+#define JSON_WORD std::string("__JSON__")
+#define YAML_STR_WORD std::string("__YAML_STR__")
+#define JSON_STR_WORD std::string("__JSON_STR__")
+#define KEY_WORD std::string("__KEY__")
+#define BUILD_TREE_WORD std::string("__BUILD_TREE__")
+#define YAML_TREE_WORD std::string("__YAML_TREE__")
+#define ROS_YAML_TREE_WORD std::string("__ROS_YAML_TREE__")
 
 
-#define TICK_WORD "__TICK__"
+
+
+#define TICK_WORD std::string("__TICK__")
 #define TICK_SAMPLE {{TICK_WORD, nullptr}}
-#define OK_WORD "__OK__"
+#define OK_WORD std::string("__OK__")
+
+#define TRACE_WORD std::string("__TRACE__")
+#define CHANGED_WORD std::string("__CHANGED__")
+
+#define TREE_WORD std::string("__TREE__")
+#define DOT_TREE_WORD std::string("__DOT_TREE__")
+#define DOT_TREE_WORD_ROS std::string("__DOT_TREE_ROS_MSG__") //temporary
+#define DOT_RT_TREE_WORD std::string("__DOT_RT_TREE__")
+
+#define ROS_COMMAND_WORD "__ROS_COMMAND__"
+#define ROS_COMMAND {{ROS_COMMAND_WORD, nullptr}}
+#define ROS_EXCEPTION_WORD "__ROS_EXCEPTION__"
+#define ROS_EXCEPTION {{ROS_EXCEPTION_WORD, nullptr}}
+#define ROS_STATE_CHANGES_WORD "__ROS_STATE_CHANGES__"
+
+#define RELOAD_COMMAND_WORD "__RELOAD_COMMAND__"
+#define RELOAD_COMMAND {{RELOAD_COMMAND_WORD, nullptr}}
+
+
+#define DEBUG_MODE
+#undef DEBUG_MODE
 
 
 
@@ -48,9 +84,23 @@ namespace abtm {
     template<typename T> using dictOf = std::unordered_map<std::string, T>;
     typedef std::unordered_set<std::string> keys;
     typedef dictOf<std::any> sample;
+    typedef std::queue<sample> trace;
     typedef std::function<sample(sample const&)> ExternalFunction;
     typedef std::function<void(sample const&)> InputFunction;
     typedef std::function<bool()> BFunction;
+    typedef dictOf<YAML::Node> tree_rep;
+
+
+    bool is_state_var(std::string const& key) {
+        return key.size() >= 9 && key.substr(0,9) == STATE_WORD;
+    }
+
+    bool is_keyword(std::string const& key) {
+        std::string state_prefix = std::string("__STATE__");
+        bool traditional_key =  key.size() >= 4 && key.substr(0,2) == "__" && key.substr(key.size()-2) == "__";
+        return traditional_key && !is_state_var(key);
+    }
+
 
     template <typename T>
     sample make_sample(std::initializer_list<std::pair<std::string, T>> il) {
@@ -74,7 +124,8 @@ namespace abtm {
     dictOf <T> from_sample(sample const& s) {
         dictOf <T> x;
         for(auto const& [k,v]: s) {
-            x[k] = std::any_cast<T>(v);
+            if(!is_keyword(k))
+                x[k] = std::any_cast<T>(v);
         }
         return x;
     }
@@ -107,6 +158,9 @@ namespace abtm {
     }
 
     sample make_exception(std::string const& what, std::string ticket = "") {
+#ifdef DEBUG_MODE
+        throw std::runtime_error(what);
+#endif
         return {{EXCEPTION_WORD, std::string(what)}, {TICKET_WORD, ticket}};
     }
 
@@ -117,6 +171,31 @@ namespace abtm {
         else return {};
     }
 
-};
+    bool ok_response(sample const& s) {
+        return s.count(RESPONSE_WORD) && std::any_cast<std::string>(s.at(RESPONSE_WORD)) == OK_WORD;
+    }
+
+    std::string keys_of(sample const&s) {
+        std::string ss;
+        for(auto const& [k,v] : s) {
+            ss += k + '\t';
+        }
+        return ss;
+    }
+
+    template<typename TimeT = std::chrono::microseconds>
+    struct measure
+    {
+        template<typename F, typename ...Args>
+        static typename TimeT::rep execution(F&& func, Args&&... args)
+        {
+            auto start = std::chrono::steady_clock::now();
+            std::forward<decltype(func)>(func)(std::forward<Args>(args)...);
+            auto duration = std::chrono::duration_cast< TimeT>
+                    (std::chrono::steady_clock::now() - start);
+            return duration.count();
+        }
+    };
+}
 
 #endif //ABTM2_COMMON_H
