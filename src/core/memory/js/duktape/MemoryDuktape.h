@@ -106,7 +106,7 @@ namespace abtm {
                 vars.insert(k);
             }
 
-            if(MEM_DUKTAPE_DEBUG) {
+            if(MEM_DUKTAPE_DEBUG && false) {
                 eval("log_window();", "", false);
                 std::string log = duk_get_string(ctx, -1);
 
@@ -116,9 +116,11 @@ namespace abtm {
 
         void set(sample const & s) override {
             std::lock_guard lockGuard(mutex);
+
             for(auto const& [k,v]: s) {
                 std::string json_view = get_from_any(v);
                 eval_no_lock(k + " = " + json_view + ";");
+
             }
             clear_duk_stack();
         };
@@ -147,6 +149,14 @@ namespace abtm {
         void set_state(std::string const& state_var, NodeState ns) override {
             eval(state_var + " = " + std::to_string(int(ns)));
         };
+
+        std::string dump_memory() {
+            std::lock_guard lockGuard(mutex);
+            eval("log_window();", "", false);
+            std::string log = duk_get_string(ctx, -1);
+            clear_duk_stack();
+            return log;
+        }
 
         sample changes() override {
             std::lock_guard lockGuard(mutex);
@@ -188,7 +198,7 @@ namespace abtm {
             return [this, new_expression]() -> bool {
                 std::lock_guard lockGuard(this->mutex);
                 eval(new_expression, "Error: runtime_error in " + new_expression, false);
-                return (bool)duk_get_boolean(ctx, -1);
+                return (bool)duk_get_boolean(ctx, -1);;
             };
         };
 
@@ -204,6 +214,10 @@ namespace abtm {
         keys used_vars(std::string const& expression) override {
             std::lock_guard lockGuard(mutex);
             return abtm_js::get_used_vars_from_expr(expression);
+        }
+
+        ~MemoryDuktape() override {
+            duk_destroy_heap(ctx);
         }
     };
 }

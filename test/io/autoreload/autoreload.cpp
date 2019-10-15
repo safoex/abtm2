@@ -19,28 +19,15 @@
 
 #include "io/ide/AutoReloader.h"
 
-template<class Var, class Mem>
-void import_file_to(std::string const& filename, abtm::LoadFabric<Var,Mem> & lf) {
-    std::ifstream js_file(filename);
-    std::string duktape_js_script   ( (std::istreambuf_iterator<char>(js_file) ),
-                                      (std::istreambuf_iterator<char>()    ) );
-    lf.memory->import(duktape_js_script);
-}
 
 int main() {
     using namespace abtm;
 
     LoadFabric<std::string, MemoryDuktape> lf(ABTM::Classic);
 
-    AutoReloader AR(&lf, false, 100, 100);
+    AutoReloader AR(&lf, "localhost:9090", 100, 100);
 
-    import_file_to("../src/core/memory/js/duktape/memory_duktape.js", lf);
-    import_file_to("../../../libs/rosmsgjs/ros_embed_description.js", lf);
-    import_file_to("../../../libs/rosmsgjs/ros_embed.js", lf);
-
-    AR.files.emplace_back("../test/io/autoreload/templates.yaml");
-    AR.files.emplace_back("../test/io/autoreload/nodes.yaml");
-    AR.spinOnce();
+    AR.main_file = "../test/io/autoreload/nodes.yaml";
 
     AR.spinForever();
 }

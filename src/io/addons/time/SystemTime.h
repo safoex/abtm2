@@ -18,14 +18,15 @@ namespace abtm {
         unsigned freq_hz;
         std::thread separate_thread;
     public:
+        bool not_finished;
         SystemTime(std::string const& time_var, unsigned freq_hz = 1000) : IOInterface(), time_var(time_var), freq_hz(freq_hz) {
-
+            not_finished = true;
         }
 
         void start_in_this_thread(InputFunction const& clocker) {
             _clocker = clocker;
             std::chrono::microseconds period(int(1e6/freq_hz));
-            while(true) {
+            while(not_finished) {
                 std::this_thread::sleep_for(period);
                 double time = std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
                 clocker({{time_var, time}});
@@ -35,6 +36,13 @@ namespace abtm {
         void start_in_separate_thread(InputFunction const& clocker) {
             separate_thread = std::thread([this, clocker]() {this->start_in_this_thread(clocker);});
         }
+
+        void stop() {
+            not_finished = false;
+            separate_thread.join();
+        }
+
+        ~SystemTime() {}
     };
 }
 

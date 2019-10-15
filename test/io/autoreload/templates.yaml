@@ -7,6 +7,7 @@ vars:
   FAILURE: 2
   RUNNING: 0
   UNDEFINED: 3
+  kek: 0
 
 ros:
   /abtm/exception:
@@ -22,6 +23,11 @@ ros:
   /abtm/yaml_state_changes:
     type: publisher
     var: __ROS_STATE_CHANGES__
+    msg: std_msgs/String
+
+  /abtm/yaml_var_changes:
+    type: publisher
+    var: __ROS_VAR_CHANGES__
     msg: std_msgs/String
 
   /abtm/yaml_command:
@@ -135,11 +141,12 @@ templates:
 
     vars:
       $start_time: $time_var
+      ~time_diff: 0
 
     nodes:
       $name:
         type: sequence
-        children: [~latched_start_timer, ~end_condition]
+        children: [~latched_start_timer, ~assign_diff, ~end_condition]
         view:
           from: $start_state
           to: $end_state
@@ -153,9 +160,13 @@ templates:
         type: action
         expr: $start_time = $time_var
 
+      ~assign_diff:
+        type: action
+        expr: ~time_diff = $time_var - $start_time; kek = 3;
+
       ~end_condition:
         type: condition
-        expr: $time_var - $start_time > $delay_secs
+        expr: ~time_diff > $delay_secs
         true_state: $end_state
         false_state: $start_state
 

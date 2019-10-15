@@ -59,12 +59,14 @@ namespace abtm {
 
         //thread safety
         std::mutex lock;
+        bool holded;
 
     public:
 
         explicit IOCenter(ExecutorInterface *executor) : executor(executor), ioExecutor(executor) {
             step = 0;
             registerIOchannel(&ioExecutor);
+            holded = false;
         }
 
         void unregisterIOchannel(IOInterface* channel) {
@@ -101,8 +103,14 @@ namespace abtm {
             };
         }
 
+        void stop() {
+            std::lock_guard lockGuard(lock);
+            holded = true;
+        }
+
         void process() {
             std::lock_guard lockGuard(lock);
+            if(!holded)
             while (!tasks.empty()) {
                 auto task = tasks.top();
                 tasks.pop();
@@ -128,83 +136,33 @@ namespace abtm {
         }
 
 
-        //process_once(sample, OUTPUT, nullptr) -> put <sample> into <tasks> for all channels
-        //process_once(sample, OUTPUT, channel) -> push <sample> into channel->process()
-        //process_once(sample, INPUT, nullptr) -> apply out = executor->callback() and process(out, OUTPUT)
-        //process_once(sample, INPUT, channel) -> put <sample> into <tasks>
-
-        void process_once(sample sample, IO_DIRECTION direction, IOInterface *channel) {
-            std::lock_guard lockGuard(lock);
-
-//            std::cout << " ----- process_once ------" << std::endl;
-//            std::cout << (direction == IO_INPUT ? "INPUT" : "OUTPUT") << std::endl;
-//            for (auto const& p : sample) std::cout << p.first << '\t';
-//            std::cout << std::endl;
-
-
-            //process(sample, IO_INPUT) -> apply out = executor->callback() and process(out, IO_OUTPUT)
-            if (direction == IO_INPUT && channel == nullptr) {
-                sample = executor->execute(sample);
-                direction = IO_DIRECTION::IO_OUTPUT;
-            }
-
-            //process(sample, OUTPUT, channel) -> push <sample> into channel->process()
-            if (direction == IO_OUTPUT && channel != nullptr) {
-                sample = channel->process(sample);
-                direction = IO_INPUT;
-            }
-
-            //process(sample, IO_OUTPUT, nullptr) -> put <sample> into <tasks> for all channels
-            if (direction == IO_OUTPUT && channel == nullptr) {
-
-//                std::cout << "------- OUTPUT sample ---------" << std::endl;
-//                for (auto const &p: sample) {
-//                    std::cout << p.first << '\t' << std::any_cast<std::string>(p.second) << std::endl;
-//                }
-//                std::cout << std::endl << "--------------" << std::endl;
-
-                if (!sample.empty()) {
-                    std::unordered_set<IOInterface *> selected_channels{};
-                    for (auto const &kv: sample) {
-                        if (vars_to_channels.count(kv.first)) {
-                            auto const &channels_from_var = vars_to_channels[kv.first];
-                            selected_channels.insert(channels_from_var.begin(), channels_from_var.end());
-                        }
-                    }
-                    selected_channels.insert(all_vars_channels.begin(), all_vars_channels.end());
-
-                    for (auto const &m: selected_channels)
-                        tasks.push({step, channels[m], m, IO_OUTPUT, sample_for_channel(m, sample)});
-                    step++;
-                }
-            }
-
-
-
-            //process(sample, IO_INPUT, channel) -> process(sample, IO_INPUT) || might be changed in future
-            if (direction == IO_INPUT && channel != nullptr) {
-                tasks.push({step, channels[channel], nullptr, IO_INPUT, sample});
-                step++;
-            }
-
-//            std::cout << " ------ process once ended-------------------" << std::endl;
-        }
-
-
         // INPUT - from channel
         // OUTPUT - to channel
 
         void process_once_v2(sample const& s, IO_DIRECTION direction, IOInterface *channel, bool need_to_lock = true) {
             if(need_to_lock) {
                 std::lock_guard lockGuard(lock);
-                process_once_v2_no_lock(s, direction, channel);
+                if(!holded)
+                    process_once_v2_no_lock(s, direction, channel);
             }
             else {
-                process_once_v2_no_lock(s, direction, channel);
+                if(!holded)
+                    process_once_v2_no_lock(s, direction, channel);
             }
         }
-        void process_once_v2_no_lock(sample const& s, IO_DIRECTION direction, IOInterface *channel) {
 
+        void process_once_v2_no_lock(sample const& s, IO_DIRECTION direction, IOInterface *channel) {
+            if(IO_DEBUG)
+            {
+                if (channel) {
+                    for (auto const&[k, v]: channel->trigger_vars)
+                        std::cout << k << '\t';
+                }
+                std::cout << (direction == IO_OUTPUT ? "OUTPUT" : "INPUT") << '\t';
+                for (auto const&[k, v]: s)
+                    std::cout << k << '\t';
+                std::cout << std::endl;
+            }
             if(direction == IO_INPUT) {
                 if(IO_DEBUG)
                 {
@@ -247,6 +205,9 @@ namespace abtm {
                 if(!res.empty()) {
                     tasks.push({step++, channels[channel], channel, IO_INPUT, res});
                 }
+            }
+            if(IO_DEBUG) {
+                std::cout << "\t\tout" << std::endl;
             }
         }
 

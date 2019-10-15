@@ -70,6 +70,11 @@
 #define ROS_EXCEPTION_WORD "__ROS_EXCEPTION__"
 #define ROS_EXCEPTION {{ROS_EXCEPTION_WORD, nullptr}}
 #define ROS_STATE_CHANGES_WORD "__ROS_STATE_CHANGES__"
+#define ROS_VAR_CHANGES_WORD "__ROS_VAR_CHANGES__"
+#define ROS_VAR_CHANGES_REQUEST_WORD "__ROS_VAR_CHANGES_REQUEST__"
+#define ROS_CHANGE_FILE "__ROS_CHANGE_FILE__"
+#define ROS_MAIN_AUTORELOAD_FILE "__ROS_MAIN_AUTORELOAD_FILE__"
+
 
 #define RELOAD_COMMAND_WORD "__RELOAD_COMMAND__"
 #define RELOAD_COMMAND {{RELOAD_COMMAND_WORD, nullptr}}
@@ -95,7 +100,6 @@ namespace abtm {
     }
 
     bool is_keyword(std::string const& key) {
-        std::string state_prefix = std::string("__STATE__");
         bool traditional_key =  key.size() >= 4 && key.substr(0,2) == "__" && key.substr(key.size()-2) == "__";
         return traditional_key && !is_state_var(key);
     }

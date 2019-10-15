@@ -22,7 +22,7 @@ namespace abtm {
     public:
         ROSLoader(Loaders* loaders, IOCenter* mimo, std::string const& client_name, std::string const& rosbridge_port = "localhost:9090")
         : rbc(rosbridge_port), Loader(loaders), mimo(mimo), client(client_name) {
-            rbc.addClient(client);
+//            rbc.addClient(client);
         };
 
         sample load_yaml(sample const& s, YAML::Node const& yn) override {
@@ -109,7 +109,9 @@ namespace abtm {
         ~ROSLoader() override {
             for(auto t:topics)
                 delete t;
-            rbc.removeClient(client);
+
+//            rbc.stopClient(client);
+//            rbc.removeClient(client);
         };
     };
 }

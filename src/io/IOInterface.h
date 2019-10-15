@@ -13,8 +13,11 @@ namespace abtm {
     class IOInterface {
     public:
         sample required_vars, trigger_vars;
+        bool time_to_die;
         IOInterface(sample const& required_vars, sample const& trigger_vars)
-                : required_vars(required_vars), trigger_vars(trigger_vars) {};
+                : required_vars(required_vars), trigger_vars(trigger_vars) {
+            time_to_die = false;
+        };
 
         IOInterface() {}
 

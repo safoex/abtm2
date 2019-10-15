@@ -35,7 +35,9 @@ namespace abtm {
 
             }
             YAML::Node states;
+            YAML::Node vars;
             bool any_state = false;
+            bool any_var = false;
             for(auto const& [k, v]: s) {
                 if(ROS_COMM_DEBUG)
                     std::cout << k << '\t' << is_state_var(k) << '\t';
@@ -49,6 +51,15 @@ namespace abtm {
                     }
                     any_state = true;
                 }
+                if(!is_keyword(k) && !is_state_var(k)) {
+                    try {
+                        vars[k] = std::any_cast<std::string>(v);
+                    }
+                    catch (std::bad_any_cast& e) {
+                        vars[k] = std::any_cast<double>(v);
+                    }
+                    any_var = true;
+                }
             }
             if(any_state) {
                 std::stringstream sstream;
@@ -57,20 +68,33 @@ namespace abtm {
                     std::cout << states << std::endl;
                 res[ROS_STATE_CHANGES_WORD] = "{\"data\": \"" + string_utils::escape_json(sstream.str())+ "\"}";
             }
+            if(any_var) {
+                std::stringstream sstream;
+                sstream << vars;
+                if(ROS_COMM_DEBUG)
+                    std::cout << vars << std::endl;
+//                res[ROS_VAR_CHANGES_WORD] = "{\"data\": \"" + string_utils::escape_json(sstream.str())+ "\"}";
+            }
+
             if(s.count(ROS_COMMAND_WORD)) {
                 auto msg = std::any_cast<std::string>(s.at(ROS_COMMAND_WORD));
                 rapidjson::Document d;
                 d.Parse(msg.c_str());
                 std::string command = d["data"].GetString();
-                ExecutorInterface::Execution com_value = ExecutorInterface::START;
-                if(command == "start")
-                    com_value = ExecutorInterface::Execution::START;
-                if(command == "stop")
-                    com_value = ExecutorInterface::Execution::STOP;
-                if(command == "pause")
-                    com_value = ExecutorInterface::Execution::PAUSE;
-                auto com = ExecutorInterface::pack(ExecutorInterface::CommandType::Execute, com_value);
-                res = com;
+                if(command == "start" || command == "stop" || command == "pause") {
+                    ExecutorInterface::Execution com_value = ExecutorInterface::START;
+                    if (command == "start")
+                        com_value = ExecutorInterface::Execution::START;
+                    if (command == "stop")
+                        com_value = ExecutorInterface::Execution::STOP;
+                    if (command == "pause")
+                        com_value = ExecutorInterface::Execution::PAUSE;
+                    auto com = ExecutorInterface::pack(ExecutorInterface::CommandType::Execute, com_value);
+                    res = com;
+                }
+                else if(command == "vars") {
+                    res = {{ROS_VAR_CHANGES_REQUEST_WORD, nullptr}};
+                }
             }
             return res;
         }

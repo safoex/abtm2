@@ -13,7 +13,6 @@
 #include "core/nodes/Leaf.h"
 
 #define DROP_TICKS_ON_PAUSE
-#undef DROP_TICKS_ON_PAUSE
 
 namespace abtm {
 
@@ -86,6 +85,8 @@ namespace abtm {
             sample res;
             for(auto const& [k,v] : s) {
                 if(!is_keyword(k) || k == TICK_WORD) {
+                    if(k != "time" && k != TICK_WORD)
+                        std::cout << k << std::endl;
                     res[k] = v;
                 }
             }

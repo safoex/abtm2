@@ -40,8 +40,8 @@ namespace abtm {
 
 
         virtual ~ROSTopic() {
-            rbc.stopClient(client);
             rbc.removeClient(client);
+            std::cout << "stopped and removed " + client << std::endl;
         };
     };
 
@@ -74,10 +74,6 @@ namespace abtm {
             return {};
         };
 
-        ~ROSPublisher() override {
-            rbc.stopClient(client);
-            rbc.removeClient(client);
-        };
 
     };
 
@@ -113,9 +109,7 @@ namespace abtm {
         }
 
         ~ROSSubscriber() override {
-            rbc.stopClient(client);
-            rbc.removeClient(client);
-            rbc.stopClient(client+"__a__");
+            this->f = InputFunction();
             rbc.removeClient(client+"__a__");
         };
     };
