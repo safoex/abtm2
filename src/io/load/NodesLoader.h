@@ -33,6 +33,7 @@ namespace abtm {
 
         keys new_nodes;
         YAML::Node tree_rep;
+        bool tree_built;
 
 
         std::string find_root() {
@@ -74,9 +75,9 @@ namespace abtm {
             return to_insert;
         }
     public:
-        NodesLoader(Loaders* loaders) : Loader(loaders) {
+        NodesLoader(Loaders* loaders) : Loader(loaders), tree_built(false) {
             optional_prerequisties = {"vars", "templates"};
-            trigger_vars = {{BUILD_TREE_WORD, std::string("")}};
+            trigger_vars = {{BUILD_TREE_WORD, std::string()}, {ROS_GET_TREE_WORD, std::string()}};
             required_vars = ALL_CHANGED;
         }
 
@@ -94,6 +95,16 @@ namespace abtm {
                 auto result = build_tree(s);
                 result[RESPONSE_WORD] = result.empty() ? OK_WORD : EXCEPTION_WORD;
                 result[TICKET_WORD] = ticket;
+                return result;
+            }
+            else if(s.count(ROS_GET_TREE_WORD)) {
+                sample result;
+                std::stringstream sstream;
+                std::cout << ROS_GET_TREE_WORD << std::endl;
+                if(tree_built) {
+                    sstream << tree_rep;
+                    result[YAML_TREE_WORD] = sstream.str();
+                }
                 return result;
             }
             else {
@@ -195,6 +206,7 @@ namespace abtm {
                 std::stringstream sstream;
                 sstream << tree_rep;
                 result[YAML_TREE_WORD] = sstream.str();
+                tree_built = true;
                 if(NODES_DEBUG)
                     std::cout << "TREE ADDED" << std::endl;
             }

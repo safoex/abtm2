@@ -7,7 +7,6 @@ vars:
   FAILURE: 2
   RUNNING: 0
   UNDEFINED: 3
-  kek: 0
 
 ros:
   /abtm/exception:
@@ -162,7 +161,7 @@ templates:
 
       ~assign_diff:
         type: action
-        expr: ~time_diff = $time_var - $start_time; kek = 3;
+        expr: ~time_diff = $time_var - $start_time;
 
       ~end_condition:
         type: condition

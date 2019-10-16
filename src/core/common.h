@@ -49,6 +49,8 @@
 #define BUILD_TREE_WORD std::string("__BUILD_TREE__")
 #define YAML_TREE_WORD std::string("__YAML_TREE__")
 #define ROS_YAML_TREE_WORD std::string("__ROS_YAML_TREE__")
+#define ROS_GET_TREE_WORD std::string("__ROS_GET_TREE__")
+#define ROS_GET_TREE {{ROS_GET_TREE_WORD, nullptr}}
 
 
 

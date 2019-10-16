@@ -95,6 +95,9 @@ namespace abtm {
                 else if(command == "vars") {
                     res = {{ROS_VAR_CHANGES_REQUEST_WORD, nullptr}};
                 }
+                else if(command == "tree") {
+                    res = ROS_GET_TREE;
+                }
             }
             return res;
         }

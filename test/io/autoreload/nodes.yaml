@@ -14,7 +14,7 @@ vars:
   b: ROS.std_msgs.Float32()
   c: "{'data': 0}"
   time: 1
-  z: 3
+  z: 2
 #  a: 0
 #  b: 0
 #  c: 0
