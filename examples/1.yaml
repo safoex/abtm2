@@ -1,0 +1,50 @@
+import:
+  memory:
+    scripts:
+      - "../src/core/memory/js/duktape/memory_duktape.js"
+      - "../../../libs/rosmsgjs/ros_embed_description.js"
+      - "../../../libs/rosmsgjs/ros_embed.js"
+    reload: yes
+  yaml:
+    - "../test/io/autoreload/templates.yaml"
+    - this
+
+vars:
+  a: ROS.std_msgs.Float32()
+  b: ROS.std_msgs.Float32()
+  c: ROS.std_msgs.Float32()
+  time: 0
+
+#  a: 0
+#  b: 0
+#  c: 0
+
+ros:
+  /abtm/a:
+    type: subscriber
+    var: a
+    msg: std_msgs/Float32
+
+  /abtm/b:
+    type: subscriber
+    var: b
+    msg: std_msgs/Float32
+
+  /abtm/c:
+    type: publisher
+    var: c
+    msg: std_msgs/Float32
+
+
+
+
+nodes:
+  root:
+    parent: ""
+    type: sequence
+    children: [sum]
+
+  sum:
+    type: action
+    expr: c.data = a.data + b.data
+
