@@ -11,7 +11,7 @@ endif()
 
 
 include_directories(src)
-set(CMAKE_MY_LIBS_PATH ../../libs)
+set(CMAKE_MY_LIBS_PATH ../../libs/abtm_dep)
 include_directories(${CMAKE_MY_LIBS_PATH}/rapidjson/include)
 include_directories(${CMAKE_MY_LIBS_PATH}/esprima-cpp)
 include_directories(${CMAKE_MY_LIBS_PATH}/duktape-2.4.0/src)
@@ -44,7 +44,7 @@ add_executable(test_tree_async test/core/exec/test_tree_async.cpp)
 add_executable(test_io test/io/iocenter.cpp)
 target_link_libraries(test_io libyaml-cpp.so)
 
-add_executable(test_parse test/io/parse.cpp )
+add_executable(test_parse test/io/parse.cpp  ${MEMORY_DUKTAPE_LIBS})
 target_link_libraries(test_parse libyaml-cpp.so rosbridgecpp)
 
 
