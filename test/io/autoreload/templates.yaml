@@ -7,6 +7,7 @@ vars:
   FAILURE: 2
   RUNNING: 0
   UNDEFINED: 3
+  kek: 0
 
 ros:
   /abtm/exception:
@@ -40,6 +41,39 @@ ros:
     msg: rosgraph_msgs/Clock
 
 templates:
+  ros_set_header:
+    args:
+      required: [var]
+      optional:
+        clock_var: clock
+        time_var: time
+        frame: map
+    nodes:
+      $name:
+        type: sequence
+        children: [~set_time, ~set_frame]
+
+      ~set_frame:
+        type: action
+        expr: $var.header.frame_id = '$frame';
+
+      ~set_time:
+        type: t/select_ros_env
+        child_sim: ~set_time_from_clock
+        child_real: ~set_time_from_time
+
+      ~set_time_from_clock:
+        type: action
+        expr: $var.header.stamp = $clock_var.clock
+
+      ~set_time_from_time:
+        type: action
+        expr:
+          $var.header.stamp.secs = Math.floor($time_var);
+          $var.header.stamp.nsecs = Math.floor(($time_var - Math.floor($time_var)) * 1e9);
+
+    children: []
+
   cast_ros_clock_to_sec:
     args:
       required: [to, from]
@@ -51,26 +85,25 @@ templates:
 
   condition:
     args:
-      required: [parent]
       optional:
         S: default
         F: default
 
     nodes:
       $name:
-        parent: $parent
         type: skipper
         children: [~SR, ~FR]
+        view:
+          S: $S
+          F: $F
 
       ~SR:
-        parent: $name
         type: condition
         expr: $S
         true_state: SUCCESS
         false_state: RUNNING
 
       ~FR:
-        parent: $name
         type: condition
         expr: $F
         true_state: FAILURE
@@ -98,6 +131,29 @@ templates:
 
     children: [$child]
 
+  select_ros_env:
+    args:
+      required: [child_sim, child_real]
+      optional:
+        env: ENV
+
+    nodes:
+      $name:
+        type: selector
+        children: [~select_ros_sim, $child_real]
+
+      ~select_ros_sim:
+        type: sequence
+        children: [~if_ros_sim, $child_sim]
+
+      ~if_ros_sim:
+        type: condition
+        expr: $env == ROS_SIM
+        true_state: S
+        false_state: F
+
+    children: [$child_sim, $child_real]
+
   set_time:
     args:
       required: [to]
@@ -108,18 +164,10 @@ templates:
 
     nodes:
       $name:
-        type: selector
-        children: [~select_ros_sim, ~set_sys_time]
-
-      ~select_ros_sim:
-        type: sequence
-        children: [~if_ros_sim, ~set_ros_sim]
-
-      ~if_ros_sim:
-        type: condition
-        expr: $env == ROS_SIM
-        true_state: S
-        false_state: F
+        type: t/select_ros_env
+        child_sim: ~set_ros_sim
+        child_real: ~set_sys_time
+        env: $env
 
       ~set_ros_sim:
         type: t/cast_ros_clock_to_sec
@@ -198,7 +246,7 @@ templates:
         time_var: $current_time
         start_time: $start_time
 
-      children: []
+    children: []
 
 
 
@@ -232,6 +280,196 @@ templates:
 
     children: [$child]
 
+
+  control_latches_simple:
+    args:
+      required: [children, control_type]
+      construct:
+        _children_latched:
+          from: children
+          V: $V_latch
+      view_exclude: [children]
+
+    nodes:
+      $name:
+        type: $control_type
+        children: $_children_latched
+
+    unpack:
+      children:
+        nodes:
+          $V_latch:
+            type: t/latch
+            child: $V
+
+    children: $children
+
+  seq_latches_simple:
+    args:
+      required: [children]
+
+    nodes:
+      $name:
+        type: t/control_latches_simple
+        children: $children
+        control_type: sequence
+
+    children: $children
+
+  control_latches:
+    args:
+      required: [children, control_type]
+      optional:
+        reset_var: ~reset
+      construct:
+        _reset_children:
+          from: children
+          V: $V_reset_action
+
+    vars:
+      $reset_var: true
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~check_if_reset, ~seq_w_latches]
+        view:
+          reset: $reset_var
+
+      ~check_if_reset:
+        type: selector
+        children: [~if_reset, ~reset_children_and_set_var_back]
+
+      ~if_reset:
+        type: t/condition
+        F: $reset_var == true
+        S: $reset_var != true
+
+      ~reset_children_and_set_var_back:
+        type: sequence
+        children: [~reset_children, ~set_var_back]
+
+      ~set_var_back:
+        type: action
+        expr: $reset_var = false
+
+      ~reset_children:
+        type: sequence
+        children: $_reset_children
+
+      ~seq_w_latches:
+        type: t/control_latches_simple
+        children: $children
+        control_type: $control_type
+
+    unpack:
+      children:
+        nodes:
+          $V_reset_action:
+            type: action
+            expr: __STATE__$V = UNDEFINED; kek++;
+
+    children: $children
+
+
+  seq_latches:
+    args:
+      required: [children]
+      optional:
+        reset_var: ~reset
+
+    nodes:
+      $name:
+        type: t/control_latches
+        children: $children
+        reset_var: $reset_var
+        control_type: sequence
+
+    children: $children
+
+  ros_set_move_goal_simple:
+    args:
+      required: [move_goal_var, x, y]
+      optional:
+        z: 0
+        clock_var: clock
+        time_var: time
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~set_header, ~set_coords]
+        view:
+          x: $x
+          y: $y
+          z: $z
+
+      ~set_header:
+        type: t/ros_set_header
+        var: $move_goal_var
+        clock_var: $clock_var
+        time_var: $time_var
+
+      ~set_coords:
+        type: action
+        expr:
+          $move_goal_var.pose.position.x = $x;
+          $move_goal_var.pose.position.y = $y;
+          $move_goal_var.pose.orientation.w = 1;
+
+
+    children: []
+
+  ros_set_move_goal:
+    args:
+      required: [move_goal_var, x, y]
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~set_headers, ~set_coords]
+        view:
+          x: $x
+          y: $y
+
+      ~set_headers:
+        type: sequence
+        children: [~set_header_main, ~set_header_target_pose]
+
+      ~set_header_main:
+        type: t/ros_set_header
+        var: $move_goal_var
+
+      ~set_header_target_pose:
+        type: t/ros_set_header
+        var: $move_goal_var.goal.target_pose
+
+      ~set_coords:
+        type: action
+        expr:
+          $move_goal_var.goal.target_pose.pose.position.x = $x;
+          $move_goal_var.goal.target_pose.pose.position.y = $y;
+          $move_goal_var.goal.target_pose.pose.orientation.w = 1;
+
+
+    children: []
+  
+  ros_measure_distance:
+    args: 
+      required: [d, A, B]
+    
+    nodes:
+      $name:
+        type: action
+        expr:
+          $d.x = $A.x - $B.x;
+          $d.y = $A.y - $B.y;
+          $d.z = $A.z - $B.z;
+          $d.d = Math.sqrt($d.x * $d.x + $d.y * $d.y + $d.z * $d.z);
+
+    children: []
+        
+        
 
 
 

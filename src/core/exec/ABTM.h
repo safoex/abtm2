@@ -85,8 +85,8 @@ namespace abtm {
             sample res;
             for(auto const& [k,v] : s) {
                 if(!is_keyword(k) || k == TICK_WORD) {
-                    if(k != "time" && k != TICK_WORD)
-                        std::cout << k << std::endl;
+//                    if(k != "time" && k != TICK_WORD)
+//                        std::cout << k << std::endl;
                     res[k] = v;
                 }
             }
@@ -126,8 +126,9 @@ namespace abtm {
                 if (state == START) {
                     while (!stash.empty()) {
                         auto tmp = exec(stash.front());
-                        for (auto const&[k, v]: tmp)
+                        for (auto const&[k, v]: tmp) {
                             result[k] = v;
+                        }
                         stash.pop();
                     }
                 }

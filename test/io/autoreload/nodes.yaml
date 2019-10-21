@@ -12,9 +12,21 @@ import:
 vars:
   a: ROS.std_msgs.Float32()
   b: ROS.std_msgs.Float32()
-  c: "{'data': 0}"
+  c: ROS.std_msgs.Float32()
   time: 1
   z: 2
+  move_goal: ROS.geometry_msgs.PoseStamped()
+  test_str: ROS.std_msgs.String()
+  reset_var: true
+  reset_move: true
+  move_base_goal: ROS.move_base_msgs.MoveBaseActionGoal()
+  move_base_feedback: ROS.move_base_msgs.MoveBaseActionFeedback()
+  move_base_cancel: ROS.actionlib_msgs.GoalID()
+  move_base_goal_id: ROS.actionlib_msgs.GoalID()
+  move_base_status: ROS.actionlib_msgs.GoalID()
+  move_base_result: ROS.move_base_msgs.MoveBaseActionResult()
+  uuid: 0
+
 #  a: 0
 #  b: 0
 #  c: 0
@@ -35,13 +47,109 @@ ros:
     var: c
     msg: std_msgs/Float32
 
+  /abtm/test_string:
+    type: publisher
+    var: test_str
+    msg: std_msgs/String
+
+  move_base:
+    type: simple_action_client
+    server: /move_base
+    package: move_base_msgs
+    action: MoveBase
+    goal: move_base_goal
+    feedback: move_base_feedback
+    cancel: move_base_cancel
+    result: move_base_result
+    goal_id: move_base_goal_id
+    status: move_base_status
+
+templates:
+  reach_move_goal:
+    args:
+      required: [x, y, tolerance]
+      optional:
+        move_goal_var: move_base_goal
+        move_goal_feedback: move_base_feedback
+        move_base_goal_id: move_base_goal_id
+
+    vars:
+      $move_goal_var: ROS.move_base_msgs.MoveBaseActionGoal()
+      ~distance: 0
+      $move_goal_feedback: ROS.move_base_msgs.MoveBaseActionFeedback()
+      ~d: ROS.geometry_msgs.Point()
+
+
+    nodes:
+      $name:
+        type: sequence
+        children: [~set_goal_seq, ~check_tolerance]
+        view:
+          x: $x
+          y: $y
+          tol: $tolerance
+
+      ~set_goal_seq:
+        type: sequence
+        children: [~set_goal, ~set_goal_id]
+
+      ~set_goal:
+        type: t/ros_set_move_goal
+        move_goal_var: $move_goal_var
+        x: $x
+        y: $y
+
+      ~set_goal_id:
+        type: action
+        expr: $move_base_goal_id.id = 'x' + uuid; uuid++; $move_goal_var.goal_id = $move_base_goal_id;
+
+      ~check_tolerance:
+        type: sequence
+        children: [~set_distance, ~check_distance]
+
+      ~set_distance:
+        type: t/ros_measure_distance
+        A: $move_goal_feedback.feedback.base_position.pose.position
+        B: $move_goal_var.goal.target_pose.pose.position
+        d: ~d
+
+      ~check_distance:
+        type: condition
+        expr: ~d.d < $tolerance
+        true_state: S
+        false_state: R
+
+    children: []
+
+
 
 
 nodes:
   root:
     parent: ""
     type: sequence
-    children: [time_branch, timer_branch]
+    children: [env_branch, time_branch, init_branch, move_branch, timer_branch]
+
+  env_branch:
+    type: action
+    expr: ENV = ROS_SIM
+
+  init_branch:
+    type: t/seq_latches
+    children: [some, test, actions]
+    reset_var: reset_var
+
+  some:
+    type: action
+    expr: test_str.data += 'some '
+
+  test:
+    type: action
+    expr: test_str.data += 'test '
+
+  actions:
+    type: action
+    expr: test_str.data += 'actions! (these actions done only once!)'
 
   time_branch:
     type: t/set_time
@@ -55,7 +163,32 @@ nodes:
 
   inc:
     type: action
-    expr: c.data = c.data + 2
+    expr:
+      c.data = c.data + 1;
+      reset_move = true;
+
+  move_branch:
+    type: t/seq_latches
+    children: [move_to_sofa, move_to_trash, move_to_kitchen]
+    reset_var: reset_move
+
+  move_to_sofa:
+    type: t/reach_move_goal
+    x: 1.85
+    y: 0.4
+    tolerance: 0.1
+
+  move_to_trash:
+    type: t/reach_move_goal
+    x: -1.65
+    y: 0.1
+    tolerance: 0.1
+
+  move_to_kitchen:
+    type: t/reach_move_goal
+    x: 0.1
+    y: -1.7
+    tolerance: 0.1
 
 #  tick_every_branch:
 #    type:

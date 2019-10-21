@@ -201,7 +201,7 @@ namespace abtm {
                             cell = std::regex_replace(cell, std::regex(var_symbol_regex+"V"), v);
                             cell = std::regex_replace(cell, std::regex(var_symbol_regex+"K"), k);
                             cell_unpacked = (YAML::Load(cell));
-                            std::cout << cell_unpacked << std::endl;
+//                            std::cout << cell_unpacked << std::endl;
                             for(auto const& p: cell_unpacked) {
                                 auto const& key = p.first.as<std::string>();
                                 for(auto const& p2 : p.second)
@@ -297,6 +297,28 @@ namespace abtm {
 
         }
 
+        std::string replace_args_in_string( std::string init,
+                                            dictOf<YAML::Node> const& replace_args,
+                                            bool scalars = true) {
+
+            for(auto const& a: replace_args) {
+                auto const &arg = a.first;
+                if(init.find(var_symbol + arg) != std::string::npos) {
+                    std::string to;
+                    std::stringstream ss;
+                    ss << YAML::Clone(a.second);
+                    to = ss.str();
+                    auto from = var_symbol_regex + arg;
+                    auto old = init;
+                    init = std::regex_replace(init, std::regex(from), to);
+//                    std::cout << "replaced from " + old + " to " + init << std::endl;
+//                    std::cout << "\t with args: \"from\": " + from + '\n' + '\t' + "\"to\": " + to << std::endl;
+                }
+
+            }
+            return init;
+        }
+
 
         YAML::Node reqursively_replace(YAML::Node const& yn, dictOf<YAML::Node> const& rep_args) {
             YAML::Node result;
@@ -318,7 +340,18 @@ namespace abtm {
                 if((s.substr(0, var_symbol.length()) == var_symbol) && rep_args.count(s.substr(1))) {
                     result = YAML::Clone(rep_args.at(s.substr(1)));
                 }
-                else result = yn;
+                else {
+                    bool has_vars_inside = false;
+
+                    for(auto const& [k,v]: rep_args) {
+                        has_vars_inside |= s.find(var_symbol + k) != std::string::npos;
+                    }
+
+                    if(has_vars_inside) {
+                        result = replace_args_in_string(s, rep_args, false);
+                    }
+                    else result = yn;
+                }
                 if(TEMPLATE_DEBUG) {
                     std::cout << "!!!!" << s << " was replaced with " << result << std::endl << std::endl;
                     std::cout << s.substr(1) << ' ' << (s.substr(0, var_symbol.length()) == var_symbol) << std::endl;
