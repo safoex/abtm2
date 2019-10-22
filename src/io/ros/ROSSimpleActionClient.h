@@ -44,17 +44,17 @@ namespace abtm {
             rbc.advertise(cancel_topic, cancel_topic, "actionlib_msgs/GoalID");
 
             auto feedback_cb = [this](std::shared_ptr<WsClient::Connection> /* connection */,
-                                      std::shared_ptr<WsClient::Message> message) {
+                                      std::shared_ptr<WsClient::InMessage> message) {
                 return this->onFeedback(message);
             };
 
             auto result_cb = [this](std::shared_ptr<WsClient::Connection> /* connection */,
-                                    std::shared_ptr<WsClient::Message> message) {
+                                    std::shared_ptr<WsClient::InMessage> message) {
                 return this->onResult(message);
             };
 
             auto status_cb = [this](std::shared_ptr<WsClient::Connection> /* connection */,
-                                    std::shared_ptr<WsClient::Message> message) {
+                                    std::shared_ptr<WsClient::InMessage> message) {
                 return this->onGoalStatusArray(message);
             };
 
@@ -112,7 +112,7 @@ namespace abtm {
         ~ROSSimpleActionClient() override = default;
 
     protected:
-        void onFeedback(std::shared_ptr<WsClient::Message> const& message) {
+        void onFeedback(std::shared_ptr<WsClient::InMessage> const& message) {
             rapidjson::Document d;
             std::string msg(message->string());
             d.Parse(msg.c_str());
@@ -126,7 +126,7 @@ namespace abtm {
             }
         }
 
-        void onGoalStatusArray(std::shared_ptr<WsClient::Message> const& message) {
+        void onGoalStatusArray(std::shared_ptr<WsClient::InMessage> const& message) {
             rapidjson::Document d;
             std::string msg(message->string());
             d.Parse(msg.c_str());
@@ -141,7 +141,7 @@ namespace abtm {
             }
         }
 
-        void onResult(std::shared_ptr<WsClient::Message> const& message) {
+        void onResult(std::shared_ptr<WsClient::InMessage> const& message) {
             rapidjson::Document d;
             std::string msg(message->string());
             d.Parse(msg.c_str());

@@ -87,7 +87,7 @@ namespace abtm {
 //            using std::chrono_literals::operator""ms;
 //            std::this_thread::sleep_for(100ms);
             rbc.subscribe(client, topic_name, [this](
-                    std::shared_ptr<WsClient::Connection> /* connection */, std::shared_ptr<WsClient::Message> message)
+                    std::shared_ptr<WsClient::Connection> /* connection */, std::shared_ptr<WsClient::InMessage> message)
             {
                 rapidjson::Document d;
                 std::string msg(message->string());
