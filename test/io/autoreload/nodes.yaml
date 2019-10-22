@@ -2,8 +2,8 @@ import:
   memory:
     scripts:
       - "../src/core/memory/js/duktape/memory_duktape.js"
-      - "../../../libs/rosmsgjs/ros_embed_description.js"
-      - "../../../libs/rosmsgjs/ros_embed.js"
+      - "../../abtm_dep/rosmsgjs/ros_embed_description.js"
+      - "../../abtm_dep/rosmsgjs/ros_embed.js"
     reload: yes
   yaml:
     - "../test/io/autoreload/templates.yaml"
@@ -174,7 +174,7 @@ nodes:
 
   move_to_sofa:
     type: t/reach_move_goal
-    x: 1.85
+    x: 1.8
     y: 0.4
     tolerance: 0.1
 
