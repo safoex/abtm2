@@ -61,7 +61,7 @@ namespace abtm {
             rbc.addClient("autoreloader2");
             rbc.subscribe("autoreloader2", "/abtm/main_file", [this](
                     std::shared_ptr<WsClient::Connection> /* connection */,
-                    std::shared_ptr<WsClient::Message> message)
+                    std::shared_ptr<WsClient::InMessage> message)
                 {
                     std::lock_guard lockGuard(mutex);
 
@@ -157,7 +157,7 @@ namespace abtm {
             }
         }
 
-        dictOf <bool> try_load_files() {
+        virtual dictOf <bool> try_load_files() {
             dictOf <bool> bad_yaml_files;
             for(auto const& f: files) {
                 try {
