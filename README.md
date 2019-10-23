@@ -36,6 +36,6 @@ start ABTM_UI
 
 ## Examples
 
-open `examples/move_base.yaml`
+open `examples/guide.yaml`
 
 start turtlebot3 navigation example with `world` map.
