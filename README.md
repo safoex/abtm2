@@ -12,7 +12,7 @@
 
 `cd yaml-cpp && mkdir build && cd build && cmake .. -DYAML_BUILD_SHARED_LIBS=ON && make`
 
-`cd ../../..'
+`cd ../../..`
 
 `mkdir build && cd build`
 
@@ -26,7 +26,9 @@ refer to https://github.com/safoex/abtm_ui/
 
 ## Use
 
-start `./test_autoreload`
+start `./test_autoreload` from build/ (! as there are some relative paths :( )
+
+note: if there is an error 1009 in connection, follow this link https://github.com/RobotWebTools/rosbridge_suite/issues/358
 
 start ABTM_UI
 
