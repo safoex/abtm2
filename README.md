@@ -4,6 +4,12 @@
 
 `sudo apt install ros-*-rosbridge-server`
 
+`git clone https://github.com/safoex/abtm2/`
+
+`cd abtm2`
+
+`git submodule update --init`
+
 `mkdir build && cd build`
 
 `cmake ../ -DCMAKE_MY_LIBS_PATH="../abtm_dep"`
