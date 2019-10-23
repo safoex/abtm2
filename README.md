@@ -39,3 +39,5 @@ start ABTM_UI
 open `examples/guide.yaml`
 
 start turtlebot3 navigation example with `world` map.
+
+don't forget to press `start` button in ABTM UI :)
