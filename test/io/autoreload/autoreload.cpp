@@ -16,8 +16,10 @@
 #include "io/IOExecutor.h"
 #include "io/load/LoadFabric.h"
 #include "io/addons/time/SystemTime.h"
+#include "io/testing/OfflineTests.h"
 
 #include "io/ide/AutoReloader.h"
+#include "io/ide/AutoReloaderWithTests.h"
 
 
 int main() {

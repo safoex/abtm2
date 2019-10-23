@@ -8,6 +8,7 @@
 #include "Loaders.h"
 #include "io/ros/ROSCommandsConverter.h"
 #include "io/addons/time/SystemTime.h"
+#include "core/memory/js/duktape/MemoryDuktape.h"
 
 
 namespace abtm {

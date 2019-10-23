@@ -125,7 +125,7 @@ templates:
 
 
 nodes:
-  root:
+  ro:
     parent: ""
     type: sequence
     children: [env_branch, time_branch, init_branch, move_branch, timer_branch]
@@ -187,7 +187,7 @@ nodes:
   move_to_kitchen:
     type: t/reach_move_goal
     x: 0.1
-    y: -1.7
+    y: -1.65
     tolerance: 0.1
 
 #  tick_every_branch:

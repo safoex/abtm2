@@ -1,0 +1,15 @@
+[submodule "abtm_dep/esprima-cpp"]
+	path = abtm_dep/esprima-cpp
+	url = https://github.com/evanw/esprima-cpp
+[submodule "abtm_dep/rapidjson"]
+	path = abtm_dep/rapidjson
+	url = https://github.com/Tencent/rapidjson
+[submodule "abtm_dep/rosbridgecpp"]
+	path = abtm_dep/rosbridgecpp
+	url = https://github.com/ppianpak/rosbridgecpp
+[submodule "abtm_dep/rosmsgjs"]
+	path = abtm_dep/rosmsgjs
+	url = https://github.com/safoex/rosmsgjs
+[submodule "abtm_dep/yaml-cpp"]
+	path = abtm_dep/yaml-cpp
+	url = https://github.com/jbeder/yaml-cpp
