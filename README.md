@@ -10,9 +10,13 @@
 
 `git submodule update --init`
 
+`cd yaml-cpp && mkdir build && cd build && cmake .. -DYAML_BUILD_SHARED_LIBS=ON && make`
+
+`cd ../../..'
+
 `mkdir build && cd build`
 
-`cmake ../ -DCMAKE_MY_LIBS_PATH="../abtm_dep"`
+`cmake .. `
 
 `make`
 
