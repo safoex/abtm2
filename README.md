@@ -6,7 +6,7 @@
 
 `mkdir build && cd build`
 
-`cmake ../ -DCMAKE_MY_LIBS_PATH="../abtm_dep`
+`cmake ../ -DCMAKE_MY_LIBS_PATH="../abtm_dep"`
 
 `make`
 
