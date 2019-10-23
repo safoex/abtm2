@@ -2,8 +2,8 @@ import:
   memory:
     scripts:
       - "../src/core/memory/js/duktape/memory_duktape.js"
-      - "../../abtm_dep/rosmsgjs/ros_embed_description.js"
-      - "../../abtm_dep/rosmsgjs/ros_embed.js"
+      - "../abtm_dep/rosmsgjs/ros_embed_description.js"
+      - "../abtm_dep/rosmsgjs/ros_embed.js"
     reload: yes
   yaml:
     - "../test/io/autoreload/templates.yaml"

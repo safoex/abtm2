@@ -2,5 +2,333 @@
 
 # Hey! Here are short instructions on how to make .yaml BT descriptions
 
-there are few global sections:
-  import: # contains
+import:
+  # this global section is devoted to import required .js and .yaml files
+  # important note! now ABTM is not able for recursive import.
+  # If your imported .yaml file has import section, it would be ignored.
+  memory:
+    # here we sequentially load .js scripts. List with paths (either absolute or relative)
+    scripts:
+      # first one is the implementation of basic functions for memory operation
+      - "../src/core/memory/js/duktape/memory_duktape.js"
+      # second is the all ROS messages (and actions btw) stored in a big JSON description
+      - "../../abtm_dep/rosmsgjs/ros_embed_description.js"
+      # third is the ROS functions for constructing a ROS msg var and few other ROS-related staff
+      - "../../abtm_dep/rosmsgjs/ros_embed.js"
+    # reload: parameter (yes or no) tells us if we have to reload memory on each tree rebuild.
+    # Leave it 'yes' if you are unsure.
+    reload: yes
+    # yaml: list of sequentially loaded .yaml tree descriptions. They would be just "summed up".
+    # if you have duplicate nodes in different files the behavior is undefined (highly likely they would just be overwritten)
+    # if you have global vars with same name in different files only the first def would be taken into account
+    yaml:
+      - "../test/io/autoreload/templates.yaml"
+      - this # 'this' word related to the current file (.main_file (the file from 'File' button in ABTM UI))
+
+vars:
+  # vars section defines the variables of BT memory.
+  # key is the variable name, value is the initial value.
+  # the value would be substituted in a JS function:
+  # add('%%name%%', %%value%%);
+  # below we discuss examples
+  time: 1
+  z: 2
+  uuid: 0
+  # two simple variables, integer at the moment of initalization.
+  # add('time', 1);
+  a: ROS.std_msgs.Float32()
+  b: ROS.std_msgs.Float32()
+  c: ROS.std_msgs.Float32()
+  # three variables initialized by constructing a ROS message var:
+  # add('a', ROS.std_msgs.Float32());
+  # later you can access stored value in a same manner as everywhere in ROS:
+  # a.data = 6.9;
+  move_goal: ROS.geometry_msgs.PoseStamped()
+  test_str: ROS.std_msgs.String()
+  # two other examples of ROS messages ...
+  reset_var: true
+  reset_move: 'true'
+  # boolean are also allowed. In both cases above YAML parser would treat values as string, therefore in both cases
+  # add('reset_var', true); or add('reset_move', true);
+  # shall be substituted. Take care!
+  move_base_goal: ROS.move_base_msgs.MoveBaseActionGoal()
+  move_base_feedback: ROS.move_base_msgs.MoveBaseActionFeedback()
+  move_base_cancel: ROS.actionlib_msgs.GoalID()
+  move_base_goal_id: ROS.actionlib_msgs.GoalID()
+  move_base_status: ROS.actionlib_msgs.GoalID()
+  move_base_result: ROS.move_base_msgs.MoveBaseActionResult()
+  # example of ActionClient variables
+  d: "{}"
+  # Note that only strings and other primitives are accepted types in var definition.
+  # If you want to create a key-value dictionary, put it's definition into quotes!
+  # add('d', {});
+  s: "'abc'"
+  # Same notice for the strings. If you want to initialize variable with string value (not global variable!)
+  # use extra quotes to add string!
+  # add('s', 'abc');
+  # if we had a
+# s: "abc"
+  # then we got a
+  # add('s', abc);
+  # which is unlikely expected result.
+
+
+nodes:
+  # here we define all* the nodes in our BT.
+  #                                                       *we would discuss the template definition later
+  # nodes section is a key value dict, whether keys are names of nodes
+  #                       (names has to be unique both because of BT inner structure and because of YAML rules)
+  # and values are dicts with different expected fields for each node type.
+  # the order of nodes does not matter. In fact, YAML specification does not force the YAML parser to load dicts
+  # in the order they are written. So, we can not force user to write down nodes in some order.
+  # Actually we don't want to force it :)
+  rootish:
+    # root node does not have to be named 'root'!
+    # but it has to have field parent: with empty string as value.
+    parent: ""
+    # root node is expected to be a control node. However, it does not matter which one.
+    # there are 4 primitive control nodes:
+    # - sequence
+    # - selector
+    # - skipper
+    # - parallel
+    type: sequence
+    # every control node has the only one another required field (except for the 'type') - children.
+    # children: has to be a list even in the case of only one child! If it's a string, that would be a mistake.
+    children: [env_branch, time_branch, init_branch, move_branch, timer_branch]
+
+
+
+  env_branch:
+    # ABTM supports 2 leaf node type:
+    # - action
+    # - condition
+    type: action
+    # action has only one required argument: expr. expr is a JS code which would be executed when action is ticked.
+    # it should not be a huge one. Why? TODO: ---link---
+    expr: ENV = ROS_SIM
+    # note: expr could be a multiline string!
+
+  init_branch:
+    # to call for a template substitution use the ('t/' + %%template name%%) for a type value:
+    type: t/seq_latches
+    # templates have different arguments, as described in their definitions. They can be
+    # required: you have to provide a value for this type of arguments
+    # optional: they have default values, so you might omit these arguments.
+    # same like as in many programming languages.
+    # arguments might be not only scalars, but lists and dicts of variable size!
+    # However, values of lists and dicts have to be scalar. :( for this moment.
+
+    # required variable-length list argument
+    children: [some, test, actions]
+    # optional scalar argument
+    reset_var: reset_var
+
+  some:
+    type: action
+    expr: test_str.data += 'some '
+
+  test:
+    type: action
+    expr: test_str.data += 'test '
+
+  actions:
+    type: action
+    expr: test_str.data += 'actions! (these actions done only once!)'
+
+  time_branch:
+    type: t/set_time
+    to: time
+
+  timer_branch:
+    type: t/tick_every
+    period_secs: 1
+    time_var: time
+    child: inc
+
+  inc:
+    type: action
+    # action with multiline expression (JS script)
+    expr:
+      c.data = c.data + 1;
+      reset_move = true;
+
+  move_branch:
+    type: t/seq_latches
+    children: [move_to_sofa, move_to_trash, move_to_kitchen]
+    reset_var: reset_move
+
+  move_to_sofa:
+    type: t/reach_move_goal
+    x: 1.8
+    y: 0.4
+    tolerance: 0.1
+
+  move_to_trash:
+    type: t/reach_move_goal
+    x: -1.65
+    y: 0.1
+    tolerance: 0.1
+
+  move_to_kitchen:
+    type: t/reach_move_goal
+    x: 0.1
+    y: -1.65
+    tolerance: 0.1
+
+
+ros:
+  # next possible global section is a ros communication definition.
+  # now we can use topics (pub/sub) and a little bit of action client.
+  # again, key value dictionaries...
+  /abtm/a:
+    # in case of either publisher or subscriber, keys are names of topics.
+    # type: could be (subscriber, sub) for subscribers
+    #            and (publisher,  pub) for publishers
+    type: subscriber
+    # var: is a name of variable in which we would write a topic message if some would arrive. Global variable!
+    var: a
+    # msg: type of ROS msg. Written just like if you write it in roslib or in rostopic cmd utility.
+    msg: std_msgs/Float32
+
+  /abtm/b:
+    type: sub
+    var: b
+    msg: std_msgs/Float32
+
+  /abtm/c:
+    type: publisher
+    var: c
+    msg: std_msgs/Float32
+
+  /abtm/test_string:
+    type: pub
+    var: test_str
+    msg: std_msgs/String
+
+  move_base:
+    # when we want to cast topics of action client into variables, the key is a unique name of a our instance.
+    # not like topics, we might want to send requests to same action server from different nodes of the tree.
+    # therefore we might define different AC instances for the same AS.
+    # type: here would be (simple_action_client, sac)
+    type: simple_action_client
+    # server: server address
+    server: /move_base
+    # package: ...
+    package: move_base_msgs
+    # action: ... obvious again
+    action: MoveBase
+    # following vars are for the 5 topics of AC/AS interaction.
+    # but here are 6 vars!
+    # yes, goal_id is a specific var which trigger sending a goal.
+    # Assigning a new value to a goal_id would resend a goal to an AS. We would listen to feedback, status for the new
+    # goal with this goal_id.
+    goal: move_base_goal
+    feedback: move_base_feedback
+    cancel: move_base_cancel
+    result: move_base_result
+    goal_id: move_base_goal_id
+    status: move_base_status
+
+templates:
+  # now it's time for the most interesting part!
+  # as a reader might get used to, we see key value dicts whether keys are unique names of templates.
+  # remember, to substitute a template in 'nodes' section, we use type: t/%%template name%%
+  # e.g. t/reach_move_goal
+  reach_move_goal:
+    # args is not a required part of template. We might have a template without any argument!
+    # however, the power of templates in arguments support.
+    # arguments of template is some scalars or lists or dicts.
+    # they would then substituted by text preprocessing.
+    # two basic parts of args: definition is
+    # required: [list, of, required, arguments]
+    # optional:
+    #  key: value dict whether values are default values of arguments
+    args:
+      required: [x, y, tolerance]
+      optional:
+        move_goal_var: move_base_goal
+        move_goal_feedback: move_base_feedback
+        move_base_goal_id: move_base_goal_id
+
+    # vars: section would be included into the global vars.
+    # but how we avoid name intersection for different instances of templates?
+    # the answer is that ~%%text%% would be replaced with _%%node name%%_%%text%%_. As node names are unique,
+    # we would never face name intersection!*
+    #             *(if you won't explicitly create global vars with ugly _%%name%%_%%name%%_ names. please don't!)
+    # $%%name%% is for the arguments from args section.
+    # However, $ or ~ can be used everywhere, not only within var names
+    vars:
+      $move_goal_var: ROS.move_base_msgs.MoveBaseActionGoal()
+      ~distance: 0
+      $move_goal_feedback: ROS.move_base_msgs.MoveBaseActionFeedback()
+      ~d: ROS.geometry_msgs.Point()
+
+    # nodes section describe which nodes would be substituted instead of t/%%template name%% call in global nodes section
+    nodes:
+      # the 'root' of template substitution must have $name name. $name var holds a name of node
+      # which had type: t/%%template name%%
+      $name:
+        type: sequence
+        children: [~set_goal_seq, ~check_tolerance]
+        # for the 'root' node, one can add view: dict, which data would be shown in visualization.
+        # note how we use ~ above to isolate children names and $ below to use arguments of template
+        # remember that $%%arg name%% and ~ are replaced in text before tree building! So, you can't except passing
+        # some variable dynamic data into it. If you pass variable from global scope as argument,
+        # it would be treated just as variable name text. However, then you can use it in JS scripts (expr: of actions)
+        view:
+          x: $x
+          y: $y
+          tol: $tolerance
+
+      ~set_goal_seq:
+        type: sequence
+        children: [~set_goal, ~set_goal_id]
+
+      ~set_goal:
+        # you can create templates which use other templates.
+        # you might even try to make self-recursive template definition! Just don't forget that infinite number of nodes
+        # is not supported by ABTM.
+        type: t/ros_set_move_goal
+        move_goal_var: $move_goal_var
+        x: $x
+        y: $y
+
+      ~set_goal_id:
+        type: action
+        # in this expr: section we use arguments as var names
+        expr: $move_base_goal_id.id = 'x' + uuid; uuid++; $move_goal_var.goal_id = $move_base_goal_id;
+
+      ~check_tolerance:
+        type: sequence
+        children: [~set_distance, ~check_distance]
+
+      ~set_distance:
+        type: t/ros_measure_distance
+        A: $move_goal_feedback.feedback.base_position.pose.position
+        B: $move_goal_var.goal.target_pose.pose.position
+        d: ~d
+
+      ~check_distance:
+        # ooof! we did not have an example of condition node in a global nodes: section!
+        # Let's fill this gap in our knowledge.
+        type: condition
+        # similar to action definition, we must provide an expr: .
+        # in case of condition, the expr should return a boolean value in terms of JS.
+        expr: ~d.d < $tolerance
+        # two extra arguments are true_state: and false_state:
+        # they might have following values: SUCCESS, FAILED, RUNNING (or shorten as S, F, R)
+        # true_state: the state would be returned if expr is true
+        true_state: S
+        # false_state: the state returned otherwise
+        false_state: R
+
+
+    # children: is the last section of template definition.
+    # it contains name of nodes, which would be shown as children of node which has type: t/%%template name%%
+    # it might be empty. If you forget to add at least empty list, the visualization would work incorrectly. TODO: fix
+    children: []
+
+    # BTW, one might add here template: section. That should work in some interesting way... :O
+    # I never tried to and it's looks more or less like a hack.
+    # At each node instantiation it would add a new tempates definition or alternate one (not affecting already built nodes)

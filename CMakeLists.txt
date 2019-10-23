@@ -11,7 +11,7 @@ endif()
 
 
 include_directories(src)
-set(CMAKE_MY_LIBS_PATH ../abtm_dep)
+set(CMAKE_MY_LIBS_PATH abtm_dep)
 include_directories(${CMAKE_MY_LIBS_PATH}/rapidjson/include)
 include_directories(${CMAKE_MY_LIBS_PATH}/esprima-cpp)
 include_directories(${CMAKE_MY_LIBS_PATH}/duktape-2.4.0/src)
