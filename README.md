@@ -44,7 +44,7 @@ start turtlebot3 navigation example with `world` map:
 
 `roslaunch turtlebot3_gazebo turtlebot3_world.launch`
 
-`roslaunch turtlebot3_navigation turtlebot3_navigation.launch map_file:=/home/safoex/catkin_ws/src/turtlebot3/turtlebot3_navigation/maps/map.yaml`
+`roslaunch turtlebot3_navigation turtlebot3_navigation.launch `
 
 
 
