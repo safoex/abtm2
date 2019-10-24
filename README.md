@@ -46,6 +46,8 @@ start turtlebot3 navigation example with `world` map:
 
 `roslaunch turtlebot3_navigation turtlebot3_navigation.launch `
 
+probably you need to pass map argument: `roslaunch turtlebot3_navigation turtlebot3_navigation.launch map_file:=/PATH/TO/catkin_ws/src/turtlebot3/turtlebot3_navigation/maps/map.yaml`
+
 
 
 don't forget to press `start` button in ABTM UI :)
