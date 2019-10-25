@@ -26,12 +26,21 @@ vars:
   move_base_status: ROS.actionlib_msgs.GoalID()
   move_base_result: ROS.move_base_msgs.MoveBaseActionResult()
   uuid: 0
+  reset_move_battery_var: 0
+  charge: 0
+  started_charging: 0
+  pub_charge: ROS.std_msgs.Float32()
 
 #  a: 0
 #  b: 0
 #  c: 0
 
 ros:
+  /abtm/charge:
+    type: publisher
+    var: pub_charge
+    msg: std_msgs/Float32
+
   /abtm/a:
     type: subscriber
     var: a
@@ -128,7 +137,17 @@ nodes:
   ro:
     parent: ""
     type: sequence
-    children: [env_branch, time_branch, init_branch, move_branch, timer_branch]
+    children: [hide_branch, battery_branch, move_branch, timer_branch]
+
+  hide_branch:
+    type: sequence
+    children: [env_branch, time_branch, fake_charge]
+
+  fake_charge:
+    type: action
+    expr:
+      charge += (started_charging - 0.5) * 0.01;
+      pub_charge.data = charge;
 
   env_branch:
     type: action
@@ -161,6 +180,64 @@ nodes:
     time_var: time
     child: inc
 
+  battery_branch:
+    type: selector
+    children: [battery_is_ok, charge_battery]
+
+  battery_is_ok:
+    type: condition
+    expr: "charge > 0.3 && !started_charging"
+    true_state: SUCCESS
+    false_state: FAILURE
+
+  charge_battery:
+    type: sequence
+    children: [ reach_charge_point, start_charge, wait_until_charged, reset_move_battery]
+
+  start_charge:
+    type: action
+    expr: started_charging = 1
+
+  reach_charge_point_latch:
+    type: t/latch
+    child: reach_charge_point
+
+  reach_charge_point:
+    type: t/reach_move_goal
+    x: 1.8
+    y: 0.4
+    tolerance: 0.1
+
+  wait_until_charged:
+    type: sequence
+    children: [wait_until_charged1, wait_until_charged2, wait_until_charged3]
+
+  wait_until_charged1:
+    type: condition
+    expr: charge > 0.5
+    true_state: SUCCESS
+    false_state: RUNNING
+
+  wait_until_charged2:
+    type: condition
+    expr: charge > 0.6
+    true_state: SUCCESS
+    false_state: RUNNING
+
+  wait_until_charged3:
+    type: condition
+    expr: charge > 0.7
+    true_state: SUCCESS
+    false_state: RUNNING
+
+
+  reset_move_battery:
+    type: action
+    expr: __STATE__reach_charge_point = UNDEFINED; started_charging = 0;
+
+
+
+
   inc:
     type: action
     expr:
@@ -188,7 +265,7 @@ nodes:
     type: t/reach_move_goal
     x: 0.1
     y: -1.65
-    tolerance: 0.1
+    tolerance: 0.2
 
 #  tick_every_branch:
 #    type:
