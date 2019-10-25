@@ -192,7 +192,7 @@ nodes:
 
   charge_battery:
     type: sequence
-    children: [ reach_charge_point, start_charge, wait_until_charged, reset_move_battery]
+    children: [ reach_charge_point_latch, start_charge, wait_until_charged, reset_move_battery]
 
   start_charge:
     type: action
