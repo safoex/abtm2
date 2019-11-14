@@ -1,4 +1,4 @@
-# welcome to simplified version of ABTM
+# Asynchronous Behavior Trees with Memory
 
 ## Install ABTM2
 
@@ -38,7 +38,8 @@ start ABTM_UI
 
 ## Examples
 
-open `examples/guide.yaml`
+file `test/io/autoreload/nodes.yaml` is opened by default;
+file `examples/guide.yaml` is similar but with comments
 
 start turtlebot3 navigation example with `world` map:
 
