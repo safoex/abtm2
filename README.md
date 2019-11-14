@@ -28,7 +28,7 @@ refer to https://github.com/safoex/abtm_ui/
 
 ## Use
 
-start `./test_autoreload` from build/ (! as there are some relative paths :( )
+start `./test_autoreload` from build/ 
 
 note: if there is an error 1009 in connection, follow this link https://github.com/RobotWebTools/rosbridge_suite/issues/358
 
